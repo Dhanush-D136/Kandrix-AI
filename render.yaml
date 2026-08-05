@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: Kandrix-AI
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm run build
+    startCommand: node backend/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        value: kandrix_ai_jwt_super_secret_key_2026
