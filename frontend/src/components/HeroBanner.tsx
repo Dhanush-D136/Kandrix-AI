@@ -42,14 +42,14 @@ export const HeroBanner: React.FC = () => {
         {/* Top-Right Badge */}
         <div className="absolute top-4 right-4 flex items-center gap-2">
           <span className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-[#6D5DFC] animate-pulse" />
-            <span>ELITE MINDS ACADEMIC PORTAL</span>
+            <Sparkles className="w-3.5 h-3.5 text-sky-400 animate-pulse" />
+            <span>KANDRIX AI ATTENDANCE PLATFORM</span>
           </span>
 
           {isAdmin && (
             <button
               onClick={() => setShowSettings(true)}
-              className="p-2 rounded-full bg-black/50 hover:bg-[#6D5DFC] backdrop-blur-md border border-white/20 text-white transition-all shadow-md group/btn"
+              className="p-2 rounded-full bg-black/50 hover:bg-blue-600 backdrop-blur-md border border-white/20 text-white transition-all shadow-md group/btn"
               title="Configure Hero Banner Image"
             >
               <Settings className="w-4 h-4 group-hover/btn:rotate-90 transition-transform duration-300" />
@@ -59,16 +59,16 @@ export const HeroBanner: React.FC = () => {
 
         {/* Bottom Branding Overlay (Bottom-Left on Desktop, Bottom-Center on Mobile) */}
         <div className="absolute bottom-5 left-5 right-5 sm:right-auto sm:max-w-xl text-center sm:text-left space-y-1.5 z-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#6D5DFC]/30 backdrop-blur-md border border-[#6D5DFC]/40 text-[#A594FF] text-[10px] font-mono font-extrabold uppercase tracking-wider">
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-600/30 backdrop-blur-md border border-blue-400/40 text-blue-200 text-[10px] font-mono font-extrabold uppercase tracking-wider">
             Official Institution Portal
           </div>
 
-          <h1 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-white tracking-tight drop-shadow-md">
-            Elite Minds Attendance Portal
+          <h1 className="font-sans font-extrabold text-2xl sm:text-3xl md:text-4xl text-white tracking-tight drop-shadow-md">
+            KANDRIX AI Attendance System
           </h1>
 
           <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed drop-shadow-sm">
-            Smart Attendance. Intelligent Analytics. Seamless Academic Management.
+            AI Enhanced Smart QR Attendance Platform. Fast, secure, dynamic attendance management.
           </p>
         </div>
       </div>

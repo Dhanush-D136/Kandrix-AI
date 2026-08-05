@@ -170,8 +170,8 @@ export const SubjectsPage: React.FC<SubjectsPageProps> = ({ onNavigate }) => {
             <h1 className="font-display font-extrabold text-2xl text-[#111827]">
               Subject Master & Curriculum Hub
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-[#F3F0FF] text-[#6D5DFC] font-bold text-xs border border-[#6D5DFC]/20">
-              ELITE MINDS
+            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 font-bold text-xs border border-blue-200">
+              KANDRIX AI
             </span>
           </div>
           <p className="text-xs text-[#6B7280] font-medium mt-1">

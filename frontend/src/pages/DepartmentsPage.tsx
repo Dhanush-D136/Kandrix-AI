@@ -21,7 +21,8 @@ export const DepartmentsPage: React.FC = () => {
     try {
       setIsLoading(true);
       const res = await api.get('/departments');
-      setDepartments(res.data.departments);
+      const list = Array.isArray(res.data) ? res.data : (res.data.departments || []);
+      setDepartments(list);
     } catch (err) {
       console.error('Failed to fetch departments', err);
     } finally {

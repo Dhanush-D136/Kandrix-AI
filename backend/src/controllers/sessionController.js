@@ -11,7 +11,7 @@ function generateAndCacheLatestQR(sessionId, subject = 'Subject', faculty = 'Fac
   return { token, payload };
 }
 
-// Background 6-second dynamic QR rotation for active sessions
+// Background 7-second dynamic QR rotation for active sessions
 setInterval(() => {
   db.all("SELECT id, subject, faculty_name FROM attendance_sessions WHERE status = 'active'", [], (err, activeSessions) => {
     if (!err && activeSessions && activeSessions.length > 0) {
@@ -33,7 +33,7 @@ setInterval(() => {
       });
     }
   });
-}, 6000);
+}, 7000);
 
 // Helper to generate a random 4-digit attendance code (e.g. 4821, 7194, 3058)
 function generate4DigitCode() {

@@ -227,7 +227,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <p className="text-[11px] text-[#6B7280] text-center pt-3 border-t border-[#E7E7E7] font-medium">
-            Elite Minds Attendance Portal Realtime Telemetry
+            KANDRIX AI Attendance System Realtime Telemetry
           </p>
         </div>
       </div>

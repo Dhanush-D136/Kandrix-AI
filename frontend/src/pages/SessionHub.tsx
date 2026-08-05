@@ -452,7 +452,7 @@ export const SessionHub: React.FC<SessionHubProps> = ({
       </head>
       <body>
         <div class="header">
-          <h1 class="title">ELITE MINDS ATTENDANCE PORTAL</h1>
+          <h1 class="title">KANDRIX AI ATTENDANCE SYSTEM</h1>
           <p class="subtitle">Session Roster & Attendance Analysis Report</p>
         </div>
 
@@ -519,7 +519,7 @@ export const SessionHub: React.FC<SessionHubProps> = ({
         <div>
           <h1 className="font-display font-extrabold text-2xl text-[#111827]">Live Dynamic QR Attendance Hub</h1>
           <p className="text-xs text-[#6B7280] font-medium mt-1">
-            Real-time attendance session manager for Elite Minds Attendance Portal
+            Real-time attendance session manager for KANDRIX AI Attendance System
           </p>
         </div>
       </div>

@@ -7,28 +7,29 @@ import { FirstLoginModal } from './components/FirstLoginModal';
 
 import { Login } from './pages/Login';
 import { SessionHub } from './pages/SessionHub';
-import { SecurityLogs } from './pages/SecurityLogs';
 import { AttendanceReportsPage } from './pages/AttendanceReportsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { QRScannerView } from './pages/QRScannerView';
 import { ClassManagementPage } from './pages/ClassManagementPage';
+import { DepartmentsPage } from './pages/DepartmentsPage';
+import { InstitutionManagementPage } from './pages/InstitutionManagementPage';
 import { SubjectsPage } from './pages/SubjectsPage';
 import { StudentTimetablePage } from './pages/StudentTimetablePage';
 import { TimetablePage } from './pages/TimetablePage';
 import { StudentManagement } from './pages/StudentManagement';
 import { FacultyManagement } from './pages/FacultyManagement';
-import { FacultyDashboard } from './pages/FacultyDashboard';
 import { AttendanceManagementPage } from './pages/AttendanceManagementPage';
-import { SpellManagementPage } from './pages/SpellManagementPage';
-import { StudentAttendanceIntelligence } from './components/StudentAttendanceIntelligence';
 import { RefreshCw } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
   const { user, token, isLoading, mustChangePasswordTempToken } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const isFaculty = user?.role === 'faculty';
-  const [activeTab, setActiveTab] = useState<string>(() => (isAdmin ? 'class-management' : isFaculty ? 'faculty-dashboard' : 'student-dashboard'));
+  const isClassPortal = user?.role === 'class_portal' || user?.role === 'faculty';
+  
+  const [activeTab, setActiveTab] = useState<string>(() => (
+    isAdmin ? 'dashboard' : isClassPortal ? 'class-portal-dashboard' : 'student-dashboard'
+  ));
   const [sessionParams, setSessionParams] = useState<{ subject?: string; code?: string; faculty?: string; period?: string } | null>(null);
 
   const handleNavigate = (tab: string, extraData?: any) => {
@@ -42,11 +43,11 @@ const MainLayout: React.FC = () => {
   useEffect(() => {
     if (user) {
       if (user.role === 'admin' && (activeTab === 'student-dashboard' || activeTab === 'qr-scanner' || activeTab === 'student-timetable')) {
-        setActiveTab('class-management');
-      } else if (user.role === 'student' && (activeTab === 'class-management' || activeTab === 'sessions' || activeTab === 'dashboard' || activeTab === 'timetable')) {
+        setActiveTab('dashboard');
+      } else if (user.role === 'student' && (activeTab === 'dashboard' || activeTab === 'class-portals' || activeTab === 'departments')) {
         setActiveTab('student-dashboard');
-      } else if (user.role === 'faculty') {
-        setActiveTab('faculty-dashboard');
+      } else if (isClassPortal && (activeTab === 'departments' || activeTab === 'class-portals' || activeTab === 'backup')) {
+        setActiveTab('class-portal-dashboard');
       }
     }
   }, [user]);
@@ -54,17 +55,18 @@ const MainLayout: React.FC = () => {
   // Loading Screen
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] text-[#111827] flex flex-col items-center justify-center space-y-4 font-sans">
-        <div className="w-14 h-14 rounded-2xl bg-[#F3F0FF] border border-[#6D5DFC]/30 flex items-center justify-center text-[#6D5DFC] shadow-floating">
+      <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col items-center justify-center space-y-4 font-sans relative overflow-hidden">
+        <div className="bg-aurora-glow" />
+        <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-md relative z-10">
           <RefreshCw className="w-7 h-7 animate-spin" />
         </div>
-        <h2 className="font-display font-extrabold text-lg text-[#111827]">Initializing Elite Minds Attendance Portal...</h2>
-        <p className="text-xs text-[#6B7280]">Smart Attendance. Intelligent Analytics. Seamless Academic Management.</p>
+        <h2 className="font-extrabold text-lg text-slate-900 relative z-10">Initializing KANDRIX AI Attendance System...</h2>
+        <p className="text-xs text-slate-500 relative z-10">AI Enhanced Smart QR Attendance Platform</p>
       </div>
     );
   }
 
-  // Route Guard: If first login password change is required, force modal overlay blocking dashboard
+  // Route Guard: If first login password change is required, force modal overlay
   if (mustChangePasswordTempToken || (user && (user.is_first_login === true || user.is_first_login === 1 || user.must_change_password === 1))) {
     return <FirstLoginModal />;
   }
@@ -74,15 +76,10 @@ const MainLayout: React.FC = () => {
     return <Login />;
   }
 
-  // Faculty Workspace Layout
-  if (isFaculty) {
-    return <FacultyDashboard />;
-  }
-
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAFAFA] text-[#111827] transition-colors duration-300 font-sans relative overflow-x-hidden">
-      {/* Ambient Background Shapes */}
-      <div className="bg-ambient-shapes" />
+    <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-800 transition-colors duration-300 font-sans relative overflow-x-hidden">
+      {/* Ambient Background Glow */}
+      <div className="bg-aurora-glow" />
 
       <Navbar />
 
@@ -91,14 +88,24 @@ const MainLayout: React.FC = () => {
 
         <main className="flex-1 p-4 md:p-6 lg:p-8 w-full overflow-y-auto">
           {isAdmin ? (
+            /* Portal 1: Super Admin Portal */
             <>
-              {(activeTab === 'class-management' || activeTab === 'dashboard') && <ClassManagementPage />}
-              {activeTab === 'spell-management' && <SpellManagementPage />}
-              {activeTab === 'attendance-intelligence' && <StudentAttendanceIntelligence />}
-              {activeTab === 'students-management' && <StudentManagement />}
-              {activeTab === 'faculty-management' && <FacultyManagement />}
-              {activeTab === 'timetable' && <TimetablePage onNavigate={handleNavigate} />}
-              {activeTab === 'subjects' && <SubjectsPage onNavigate={handleNavigate} />}
+              {(activeTab === 'dashboard' || activeTab === 'class-portals') && <ClassManagementPage />}
+              {activeTab === 'reports' && <AttendanceReportsPage onNavigate={handleNavigate} />}
+              {activeTab === 'backup' && <AttendanceManagementPage />}
+              {(activeTab === 'profile' || activeTab === 'settings') && <ProfilePage />}
+            </>
+          ) : isClassPortal ? (
+            /* Portal 2: Class Portal */
+            <>
+              {(activeTab === 'class-portal-dashboard' || activeTab === 'dashboard') && (
+                <SessionHub
+                  initialSubject={sessionParams?.subject}
+                  initialFaculty={sessionParams?.faculty}
+                  initialSubjectCode={sessionParams?.code}
+                  initialPeriod={sessionParams?.period}
+                />
+              )}
               {activeTab === 'sessions' && (
                 <SessionHub
                   initialSubject={sessionParams?.subject}
@@ -107,22 +114,21 @@ const MainLayout: React.FC = () => {
                   initialPeriod={sessionParams?.period}
                 />
               )}
+              {activeTab === 'students-management' && <StudentManagement />}
+              {activeTab === 'subjects' && <SubjectsPage onNavigate={handleNavigate} />}
+              {activeTab === 'timetable' && <TimetablePage onNavigate={handleNavigate} />}
               {activeTab === 'reports' && <AttendanceReportsPage onNavigate={handleNavigate} />}
-              {activeTab === 'attendance-management' && <AttendanceManagementPage />}
-              {activeTab === 'security' && <SecurityLogs />}
-              {activeTab === 'profile' && <ProfilePage />}
-              {activeTab === 'settings' && <ProfilePage />}
+              {(activeTab === 'profile' || activeTab === 'settings') && <ProfilePage />}
             </>
           ) : (
+            /* Portal 3: Student Portal */
             <>
-              {(activeTab === 'student-dashboard' || activeTab === 'dashboard') && <StudentDashboard />}
+              {(activeTab === 'student-dashboard' || activeTab === 'dashboard' || activeTab === 'history') && <StudentDashboard />}
               {activeTab === 'qr-scanner' && (
                 <QRScannerView onSuccessReturn={() => setActiveTab('student-dashboard')} />
               )}
               {activeTab === 'student-timetable' && <StudentTimetablePage />}
-              {activeTab === 'history' && <StudentDashboard />}
-              {activeTab === 'profile' && <ProfilePage />}
-              {activeTab === 'settings' && <ProfilePage />}
+              {(activeTab === 'profile' || activeTab === 'settings') && <ProfilePage />}
             </>
           )}
         </main>
@@ -142,3 +148,4 @@ export function App() {
 }
 
 export default App;
+

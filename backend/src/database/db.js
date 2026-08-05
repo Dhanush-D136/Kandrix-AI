@@ -163,6 +163,18 @@ function runMigrations() {
               }
             }
 
+            // Verify class_portals schema migrations
+            db.all('PRAGMA table_info(class_portals)', [], (errCp, cpColumns) => {
+              if (cpColumns) {
+                const cpColNames = cpColumns.map((c) => c.name.toLowerCase());
+                if (!cpColNames.includes('portal_name')) {
+                  try {
+                    db.run('ALTER TABLE class_portals ADD COLUMN portal_name TEXT;');
+                  } catch (e) {}
+                }
+              }
+            });
+
             // Verify subjects schema migrations
             db.all('PRAGMA table_info(subjects)', [], (errSub, subColumns) => {
               if (subColumns) {
@@ -457,6 +469,29 @@ function initDb() {
         )
       `);
 
+      // Create Institution Settings table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS institution_settings (
+          id TEXT PRIMARY KEY,
+          institution_name TEXT DEFAULT 'KANDRIX AI Attendance System',
+          logo_url TEXT,
+          academic_year TEXT DEFAULT '2026-2027 (ODD)',
+          semester_settings TEXT DEFAULT 'Odd Semester (V)',
+          min_attendance_pct REAL DEFAULT 75.0,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Seed Default Institution Settings
+      db.get('SELECT COUNT(*) as count FROM institution_settings', [], (errInst, instRow) => {
+        if (!errInst && instRow && instRow.count === 0) {
+          db.run(
+            `INSERT INTO institution_settings (id, institution_name, logo_url, academic_year, semester_settings, min_attendance_pct)
+             VALUES ('inst-1', 'KANDRIX AI Attendance System', '', '2026-2027 (ODD)', 'Odd Semester (V)', 75.0)`
+          );
+        }
+      });
+
       // Create Departments table
       db.run(`
         CREATE TABLE IF NOT EXISTS departments (
@@ -469,24 +504,133 @@ function initDb() {
         )
       `);
 
-      // Create Classes table
+      // Seed Default AI & DS Department if empty
+      db.get('SELECT COUNT(*) as count FROM departments', [], (errDept, deptRow) => {
+        if (!errDept && deptRow && deptRow.count === 0) {
+          db.run(
+            `INSERT INTO departments (id, name, code, hod_name, description)
+             VALUES ('dept-aids', 'AI & DS', 'AIDS', 'Mrs Vasanthapriya M J T', 'Artificial Intelligence & Data Science')`
+          );
+        }
+      });
+
+      // Create Courses table
       db.run(`
-        CREATE TABLE IF NOT EXISTS classes (
+        CREATE TABLE IF NOT EXISTS courses (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
-          level_year INTEGER NOT NULL,
+          code TEXT UNIQUE NOT NULL,
+          duration_years INTEGER DEFAULT 4,
+          description TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
+
+      // Seed Default Courses if empty
+      db.get('SELECT COUNT(*) as count FROM courses', [], (errCourse, crsRow) => {
+        if (!errCourse && crsRow && crsRow.count === 0) {
+          db.run(`INSERT INTO courses (id, name, code, duration_years, description) VALUES ('crs-btech', 'B.Tech', 'BTECH', 4, 'Bachelor of Technology')`);
+          db.run(`INSERT INTO courses (id, name, code, duration_years, description) VALUES ('crs-mtech', 'M.Tech', 'MTECH', 2, 'Master of Technology')`);
+          db.run(`INSERT INTO courses (id, name, code, duration_years, description) VALUES ('crs-mba', 'MBA', 'MBA', 2, 'Master of Business Administration')`);
+        }
+      });
+
+      // Create Batches table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS batches (
+          id TEXT PRIMARY KEY,
+          name TEXT UNIQUE NOT NULL,
+          start_year INTEGER,
+          end_year INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Seed Default Batches if empty
+      db.get('SELECT COUNT(*) as count FROM batches', [], (errBatch, bthRow) => {
+        if (!errBatch && bthRow && bthRow.count === 0) {
+          db.run(`INSERT INTO batches (id, name, start_year, end_year) VALUES ('bth-2024-2028', '2024-2028', 2024, 2028)`);
+          db.run(`INSERT INTO batches (id, name, start_year, end_year) VALUES ('bth-2025-2029', '2025-2029', 2025, 2029)`);
+        }
+      });
+
+      // Create Semesters table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS semesters (
+          id TEXT PRIMARY KEY,
+          name TEXT UNIQUE NOT NULL,
+          semester_number INTEGER NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Seed Default Semesters if empty
+      db.get('SELECT COUNT(*) as count FROM semesters', [], (errSem, semRow) => {
+        if (!errSem && semRow && semRow.count === 0) {
+          for (let i = 1; i <= 8; i++) {
+            db.run(`INSERT INTO semesters (id, name, semester_number) VALUES ('sem-${i}', 'Semester ${i}', ${i})`);
+          }
+        }
+      });
 
       // Create Sections table
       db.run(`
         CREATE TABLE IF NOT EXISTS sections (
           id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
+          name TEXT UNIQUE NOT NULL,
+          capacity INTEGER DEFAULT 60,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
+
+      // Seed Default Sections if empty
+      db.get('SELECT COUNT(*) as count FROM sections', [], (errSec, secRow) => {
+        if (!errSec && secRow && secRow.count === 0) {
+          ['A', 'B', 'C', 'D'].forEach((sName) => {
+            db.run(`INSERT INTO sections (id, name, capacity) VALUES ('sec-${sName.toLowerCase()}', '${sName}', 60)`);
+          });
+        }
+      });
+
+      // Create Class Portals table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS class_portals (
+          id TEXT PRIMARY KEY,
+          portal_id TEXT UNIQUE NOT NULL,
+          display_name TEXT NOT NULL,
+          username TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          department TEXT NOT NULL,
+          course TEXT NOT NULL,
+          batch TEXT NOT NULL,
+          semester INTEGER NOT NULL,
+          section TEXT NOT NULL,
+          advisor TEXT,
+          room TEXT,
+          max_students INTEGER DEFAULT 60,
+          is_first_login INTEGER DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Seed Default AI3A Class Portal if empty
+      db.get('SELECT COUNT(*) as count FROM class_portals', [], (errPortal, portalRow) => {
+        if (!errPortal && portalRow && portalRow.count === 0) {
+          const defaultPassHash = bcrypt.hashSync('1234', 10);
+          db.run(
+            `INSERT INTO class_portals (id, portal_id, display_name, username, password_hash, department, course, batch, semester, section, advisor, room, max_students, is_first_login)
+             VALUES ('cp-ai3a', 'AI-2024-SEM5-A', 'AI3A', 'AI3A', ?, 'AI & DS', 'B.Tech', '2024-2028', 5, 'A', 'Mrs Vasanthapriya M J T', '306', 60, 1)`,
+            [defaultPassHash]
+          );
+
+          // Also seed corresponding faculty account for AI3A login compatibility
+          db.run(
+            `INSERT OR IGNORE INTO faculty (id, faculty_code, name, email, department, designation, assigned_class, assigned_section, password_hash, password_changed, must_change_password)
+             VALUES ('cp-ai3a-fac', 'AI3A', 'Class Portal AI3A', 'ai3a@kandrix.ai', 'AI & DS', 'Class Advisor Portal', 'AI3A', 'A', ?, 0, 1)`,
+            [defaultPassHash]
+          );
+        }
+      });
 
       // Create Subjects table
       db.run(`

@@ -34,7 +34,7 @@ app.use('/api', apiRoutes);
 
 // Root health check route
 app.get('/health', (req, res) => {
-  res.json({ status: 'healthy', system: 'Elite Minds Attendance Portal Backend API', timestamp: new Date() });
+  res.json({ status: 'healthy', system: 'KANDRIX AI Attendance System Backend API', timestamp: new Date() });
 });
 
 // Serve frontend static build assets if available
@@ -86,7 +86,7 @@ const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`====================================================`);
-  console.log(`🚀 Elite Minds Attendance Portal Backend API Server running on port ${PORT}`);
+  console.log(`🚀 KANDRIX AI Attendance System Backend API Server running on port ${PORT}`);
   console.log(`⚡ Socket.IO Real-time Engine active on all network interfaces`);
   console.log(`====================================================`);
 });

@@ -1,7 +1,7 @@
 {
-  "name": "elite-minds-attendance-portal",
+  "name": "kandrix-ai-attendance-system",
   "version": "1.0.0",
-  "description": "Elite Minds Attendance Portal - Smart Attendance. Intelligent Analytics. Seamless Academic Management.",
+  "description": "KANDRIX AI Attendance System - AI Enhanced Smart QR Attendance Platform",
   "main": "backend/server.js",
   "scripts": {
     "install:all": "npm install --prefix backend --include=dev && npm install --prefix frontend --include=dev",

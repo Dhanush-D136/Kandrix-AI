@@ -772,21 +772,346 @@ function deleteTimetable(req, res) {
   });
 }
 
-// --- Legacy Multi-Dept Fallbacks ---
-function getDepartments(req, res) { res.json({ departments: [{ id: 'dept-1', name: 'AI & DS', code: 'AIDS', hod_name: 'Mrs Vasanthapriya M J T', description: 'Artificial Intelligence & Data Science' }] }); }
-function createDepartment(req, res) { res.json({ message: 'Success' }); }
-function updateDepartment(req, res) { res.json({ message: 'Success' }); }
-function deleteDepartment(req, res) { res.json({ message: 'Success' }); }
+// --- Real SQLite CRUD for Departments ---
+function getDepartments(req, res) {
+  db.all('SELECT * FROM departments ORDER BY name ASC', [], (err, departments) => {
+    if (err) return res.status(500).json({ error: 'Database error fetching departments' });
+    res.json({ departments: departments || [] });
+  });
+}
 
-function getClasses(req, res) { res.json({ classes: [{ id: 'cls-3', name: 'III Year', level_year: 3 }] }); }
-function createClass(req, res) { res.json({ message: 'Success' }); }
-function updateClass(req, res) { res.json({ message: 'Success' }); }
-function deleteClass(req, res) { res.json({ message: 'Success' }); }
+function createDepartment(req, res) {
+  const { name, code, hod_name, description } = req.body;
+  if (!name || !code) return res.status(400).json({ error: 'Department Name and Code are required' });
 
-function getSections(req, res) { res.json({ sections: [{ id: 'sec-a', name: 'A' }] }); }
-function createSection(req, res) { res.json({ message: 'Success' }); }
-function updateSection(req, res) { res.json({ message: 'Success' }); }
-function deleteSection(req, res) { res.json({ message: 'Success' }); }
+  const id = 'dept-' + uuidv4();
+  db.run(
+    'INSERT INTO departments (id, name, code, hod_name, description) VALUES (?, ?, ?, ?, ?)',
+    [id, name.trim(), code.trim().toUpperCase(), hod_name || '', description || ''],
+    function (err) {
+      if (err) return res.status(500).json({ error: 'Failed to create department: ' + err.message });
+      res.status(201).json({ message: 'Department created successfully', id });
+    }
+  );
+}
+
+function updateDepartment(req, res) {
+  const { id } = req.params;
+  const { name, code, hod_name, description } = req.body;
+  db.run(
+    'UPDATE departments SET name = ?, code = ?, hod_name = ?, description = ? WHERE id = ?',
+    [name.trim(), code.trim().toUpperCase(), hod_name || '', description || '', id],
+    function (err) {
+      if (err) return res.status(500).json({ error: 'Failed to update department: ' + err.message });
+      res.json({ message: 'Department updated successfully' });
+    }
+  );
+}
+
+function deleteDepartment(req, res) {
+  const { id } = req.params;
+  db.run('DELETE FROM departments WHERE id = ?', [id], function (err) {
+    if (err) return res.status(500).json({ error: 'Failed to delete department' });
+    res.json({ message: 'Department deleted successfully' });
+  });
+}
+
+// --- Real SQLite CRUD for Courses ---
+function getCourses(req, res) {
+  db.all('SELECT * FROM courses ORDER BY name ASC', [], (err, courses) => {
+    if (err) return res.status(500).json({ error: 'Database error fetching courses' });
+    res.json({ courses: courses || [] });
+  });
+}
+
+function createCourse(req, res) {
+  const { name, code, duration_years, description } = req.body;
+  if (!name || !code) return res.status(400).json({ error: 'Course Name and Code are required' });
+
+  const id = 'crs-' + uuidv4();
+  db.run(
+    'INSERT INTO courses (id, name, code, duration_years, description) VALUES (?, ?, ?, ?, ?)',
+    [id, name.trim(), code.trim().toUpperCase(), parseInt(duration_years || 4), description || ''],
+    function (err) {
+      if (err) return res.status(500).json({ error: 'Failed to create course: ' + err.message });
+      res.status(201).json({ message: 'Course created successfully', id });
+    }
+  );
+}
+
+function updateCourse(req, res) {
+  const { id } = req.params;
+  const { name, code, duration_years, description } = req.body;
+  db.run(
+    'UPDATE courses SET name = ?, code = ?, duration_years = ?, description = ? WHERE id = ?',
+    [name.trim(), code.trim().toUpperCase(), parseInt(duration_years || 4), description || '', id],
+    function (err) {
+      if (err) return res.status(500).json({ error: 'Failed to update course' });
+      res.json({ message: 'Course updated successfully' });
+    }
+  );
+}
+
+function deleteCourse(req, res) {
+  const { id } = req.params;
+  db.run('DELETE FROM courses WHERE id = ?', [id], function (err) {
+    if (err) return res.status(500).json({ error: 'Failed to delete course' });
+    res.json({ message: 'Course deleted successfully' });
+  });
+}
+
+// --- Real SQLite CRUD for Batches ---
+function getBatches(req, res) {
+  db.all('SELECT * FROM batches ORDER BY name DESC', [], (err, batches) => {
+    if (err) return res.status(500).json({ error: 'Database error fetching batches' });
+    res.json({ batches: batches || [] });
+  });
+}
+
+function createBatch(req, res) {
+  const { name, start_year, end_year } = req.body;
+  if (!name) return res.status(400).json({ error: 'Batch name is required' });
+
+  const id = 'bth-' + uuidv4();
+  db.run(
+    'INSERT INTO batches (id, name, start_year, end_year) VALUES (?, ?, ?, ?)',
+    [id, name.trim(), parseInt(start_year || 2024), parseInt(end_year || 2028)],
+    function (err) {
+      if (err) return res.status(500).json({ error: 'Failed to create batch: ' + err.message });
+      res.status(201).json({ message: 'Batch created successfully', id });
+    }
+  );
+}
+
+function deleteBatch(req, res) {
+  const { id } = req.params;
+  db.run('DELETE FROM batches WHERE id = ?', [id], function (err) {
+    if (err) return res.status(500).json({ error: 'Failed to delete batch' });
+    res.json({ message: 'Batch deleted successfully' });
+  });
+}
+
+// --- Real SQLite CRUD for Semesters ---
+function getSemesters(req, res) {
+  db.all('SELECT * FROM semesters ORDER BY semester_number ASC', [], (err, semesters) => {
+    if (err) return res.status(500).json({ error: 'Database error fetching semesters' });
+    res.json({ semesters: semesters || [] });
+  });
+}
+
+function createSemester(req, res) {
+  const { name, semester_number } = req.body;
+  if (!name || !semester_number) return res.status(400).json({ error: 'Semester name and number are required' });
+
+  const id = 'sem-' + uuidv4();
+  db.run(
+    'INSERT INTO semesters (id, name, semester_number) VALUES (?, ?, ?)',
+    [id, name.trim(), parseInt(semester_number)],
+    function (err) {
+      if (err) return res.status(500).json({ error: 'Failed to create semester: ' + err.message });
+      res.status(201).json({ message: 'Semester created successfully', id });
+    }
+  );
+}
+
+// --- Real SQLite CRUD for Sections ---
+function getSections(req, res) {
+  db.all('SELECT * FROM sections ORDER BY name ASC', [], (err, sections) => {
+    if (err) return res.status(500).json({ error: 'Database error fetching sections' });
+    res.json({ sections: sections || [] });
+  });
+}
+
+function createSection(req, res) {
+  const { name, capacity } = req.body;
+  if (!name) return res.status(400).json({ error: 'Section name is required' });
+
+  const id = 'sec-' + uuidv4();
+  db.run(
+    'INSERT INTO sections (id, name, capacity) VALUES (?, ?, ?)',
+    [id, name.trim().toUpperCase(), parseInt(capacity || 60)],
+    function (err) {
+      if (err) return res.status(500).json({ error: 'Failed to create section: ' + err.message });
+      res.status(201).json({ message: 'Section created successfully', id });
+    }
+  );
+}
+
+function deleteSection(req, res) {
+  const { id } = req.params;
+  db.run('DELETE FROM sections WHERE id = ?', [id], function (err) {
+    if (err) return res.status(500).json({ error: 'Failed to delete section' });
+    res.json({ message: 'Section deleted successfully' });
+  });
+}
+
+// --- Real SQLite CRUD for Class Portals ---
+function getClassPortals(req, res) {
+  db.all('SELECT * FROM class_portals ORDER BY created_at DESC', [], (err, portals) => {
+    if (err) return res.status(500).json({ error: 'Database error fetching class portals' });
+    res.json({ class_portals: portals || [] });
+  });
+}
+
+function generateClassPortal(req, res) {
+  const bcrypt = require('bcryptjs');
+  const { portal_name, display_name, portal_id, username, password, advisor, room, max_students } = req.body;
+
+  const dispName = (display_name || portal_id || username || 'AI3A').trim();
+  const portId = (portal_id || username || dispName).trim();
+  const uname = (username || dispName).trim();
+  const pName = (portal_name || dispName).trim();
+  const defaultPass = password || '1234';
+  const passHash = bcrypt.hashSync(defaultPass, 10);
+  const id = 'cp-' + uuidv4();
+
+  const finalizePortalCreation = (targetId) => {
+    // 1. Seed Faculty / Staff Container (Account for Class Portal login)
+    db.run(
+      `INSERT OR REPLACE INTO faculty (id, faculty_code, name, email, department, designation, assigned_class, assigned_section, password_hash, password_changed, must_change_password)
+       VALUES (?, ?, ?, ?, ?, 'Class Advisor Portal', ?, 'A', ?, 0, 1)`,
+      [targetId, uname, `Class Portal ${dispName}`, `${uname.toLowerCase()}@kandrix.ai`, pName, dispName, passHash]
+    );
+
+    // 2. Seed Subjects Container for this class
+    const defaultSubjects = [
+      { code: 'CS51T', name: 'Programming Language for AI', type: 'Theory', credits: 3 },
+      { code: 'CS55T', name: 'Knowledge Engineering', type: 'Theory', credits: 3 },
+      { code: 'CS52T', name: 'Data Analytics', type: 'Theory', credits: 3 },
+      { code: 'CS53IT', name: 'Web Technology', type: 'Theory', credits: 3 },
+      { code: 'CS54T', name: 'Blockchain Technology', type: 'Theory', credits: 3 },
+      { code: 'CS57P', name: 'Data Analytics Laboratory', type: 'Lab', credits: 2 }
+    ];
+
+    defaultSubjects.forEach((sub) => {
+      const subId = `sub-${dispName.toLowerCase()}-${sub.code.toLowerCase()}`;
+      db.run(
+        `INSERT OR IGNORE INTO subjects (id, name, code, type, department, year, semester, section, faculty_name, credits, status, is_archived)
+         VALUES (?, ?, ?, ?, ?, 3, 5, 'A', ?, ?, 'Active', 0)`,
+        [subId, sub.name, sub.code, sub.type, pName, advisor || 'Staff', sub.credits]
+      );
+    });
+
+    // 3. Seed Timetable Container for this class
+    const defaultTtSlots = [
+      { day: 'Monday', period: 1, name: 'Knowledge Engineering', start: '08:15 AM', end: '09:05 AM' },
+      { day: 'Monday', period: 2, name: 'Programming Language for AI', start: '09:05 AM', end: '09:55 AM' },
+      { day: 'Monday', period: 3, name: 'Data Analytics', start: '10:10 AM', end: '11:00 AM' },
+      { day: 'Tuesday', period: 1, name: 'Data Analytics', start: '08:15 AM', end: '09:05 AM' },
+      { day: 'Wednesday', period: 1, name: 'Web Technology', start: '08:15 AM', end: '09:05 AM' }
+    ];
+
+    defaultTtSlots.forEach((slot) => {
+      const ttId = `tt-${dispName.toLowerCase()}-${slot.day.toLowerCase()}-p${slot.period}`;
+      db.run(
+        `INSERT OR IGNORE INTO timetables (id, department, year, section, semester, day, period_number, subject_name, faculty_name, start_time, end_time, room_number)
+         VALUES (?, ?, 3, 'A', 5, ?, ?, ?, ?, ?, ?, ?)`,
+        [ttId, pName, slot.day, slot.period, slot.name, advisor || 'Staff', slot.start, slot.end, room || '306']
+      );
+    });
+
+    return res.status(200).json({
+      message: `Class Portal ${dispName} configured successfully!`,
+      portal: {
+        id: targetId,
+        portal_name: pName,
+        portal_id: portId,
+        display_name: dispName,
+        username: uname,
+        password: defaultPass,
+        advisor: advisor || 'Class Advisor',
+        room: room || '306',
+        max_students: parseInt(max_students || 70)
+      }
+    });
+  };
+
+  db.get('SELECT id FROM class_portals WHERE username = ? OR portal_id = ?', [uname, portId], (checkErr, existing) => {
+    if (existing) {
+      db.run(
+        `UPDATE class_portals 
+         SET display_name = ?, password_hash = ?, advisor = ?, room = ?, max_students = ?
+         WHERE id = ?`,
+        [dispName, passHash, advisor || 'Class Advisor', room || '306', parseInt(max_students || 70), existing.id],
+        function (updErr) {
+          if (updErr) {
+            console.error('[CLASS PORTAL UPDATE ERROR]', updErr);
+            return res.status(500).json({ error: 'Failed to update Class Portal: ' + updErr.message });
+          }
+          finalizePortalCreation(existing.id);
+        }
+      );
+    } else {
+      db.run(
+        `INSERT INTO class_portals 
+        (id, portal_name, display_name, portal_id, username, password_hash, department, course, batch, semester, section, advisor, room, max_students, is_first_login)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'B.Tech', '2024-2028', 5, 'A', ?, ?, ?, 1)`,
+        [id, pName, dispName, portId, uname, passHash, pName, advisor || 'Class Advisor', room || '306', parseInt(max_students || 70)],
+        function (insErr) {
+          if (insErr) {
+            console.error('[CLASS PORTAL INSERT ERROR]', insErr);
+            // Fallback insert without portal_name column if old SQLite table schema without portal_name column exists
+            return db.run(
+              `INSERT INTO class_portals 
+              (id, portal_id, display_name, username, password_hash, department, course, batch, semester, section, advisor, room, max_students, is_first_login)
+              VALUES (?, ?, ?, ?, ?, ?, 'B.Tech', '2024-2028', 5, 'A', ?, ?, ?, 1)`,
+              [id, portId, dispName, uname, passHash, pName, advisor || 'Class Advisor', room || '306', parseInt(max_students || 70)],
+              function (fallbackErr) {
+                if (fallbackErr) {
+                  console.error('[CLASS PORTAL FALLBACK INSERT ERROR]', fallbackErr);
+                  return res.status(500).json({ error: 'Failed to create Class Portal: ' + fallbackErr.message });
+                }
+                finalizePortalCreation(id);
+              }
+            );
+          }
+          finalizePortalCreation(id);
+        }
+      );
+    }
+  });
+}
+
+function deleteClassPortal(req, res) {
+  const { id } = req.params;
+  db.run('DELETE FROM class_portals WHERE id = ? OR username = ?', [id, id], function (err) {
+    if (err) return res.status(500).json({ error: 'Failed to delete class portal' });
+    db.run('DELETE FROM faculty WHERE id = ? OR faculty_code = ?', [id, id]);
+    res.json({ message: 'Class Portal deleted successfully' });
+  });
+}
+
+// --- Institution Settings ---
+function getInstitutionSettings(req, res) {
+  db.get('SELECT * FROM institution_settings WHERE id = "inst-1"', [], (err, settings) => {
+    if (err || !settings) {
+      return res.json({
+        settings: {
+          institution_name: 'KANDRIX AI Attendance System',
+          logo_url: '',
+          academic_year: '2026-2027 (ODD)',
+          semester_settings: 'Odd Semester (V)',
+          min_attendance_pct: 75.0
+        }
+      });
+    }
+    res.json({ settings });
+  });
+}
+
+function updateInstitutionSettings(req, res) {
+  const { institution_name, logo_url, academic_year, semester_settings, min_attendance_pct } = req.body;
+  db.run(
+    `UPDATE institution_settings SET 
+      institution_name = ?, logo_url = ?, academic_year = ?, semester_settings = ?, min_attendance_pct = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE id = "inst-1"`,
+    [institution_name, logo_url || '', academic_year, semester_settings, parseFloat(min_attendance_pct || 75.0)],
+    function (err) {
+      if (err) return res.status(500).json({ error: 'Failed to update institution settings' });
+      res.json({ message: 'Institution settings updated successfully' });
+    }
+  );
+}
 
 module.exports = {
   getClassDetails,
@@ -810,12 +1135,22 @@ module.exports = {
   createDepartment,
   updateDepartment,
   deleteDepartment,
-  getClasses,
-  createClass,
-  updateClass,
-  deleteClass,
+  getCourses,
+  createCourse,
+  updateCourse,
+  deleteCourse,
+  getBatches,
+  createBatch,
+  deleteBatch,
+  getSemesters,
+  createSemester,
   getSections,
   createSection,
-  updateSection,
-  deleteSection
+  deleteSection,
+  getClassPortals,
+  generateClassPortal,
+  deleteClassPortal,
+  getInstitutionSettings,
+  updateInstitutionSettings
 };
+

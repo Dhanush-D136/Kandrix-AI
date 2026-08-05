@@ -425,7 +425,7 @@ export const AttendanceReportsPage: React.FC<AttendanceReportsPageProps> = ({ on
       </head>
       <body>
         <h1>${title}</h1>
-        <h3>Elite Minds Attendance Portal • Smart Attendance. Intelligent Analytics. Seamless Academic Management.</h3>
+        <h3>KANDRIX AI Attendance System • AI Enhanced Smart QR Attendance Platform</h3>
         <div class="meta">
           <strong>Date Generated:</strong> ${new Date().toLocaleString()}<br/>
           <strong>Date Range Filter:</strong> ${fromDate || 'All'} to ${toDate || 'Present'} &nbsp;&nbsp;|&nbsp;&nbsp; 
@@ -503,7 +503,7 @@ export const AttendanceReportsPage: React.FC<AttendanceReportsPageProps> = ({ on
           </table>
         `
         }
-        <div class="footer">Elite Minds Attendance Portal • Confidential Academic Report</div>
+        <div class="footer">KANDRIX AI Attendance System • Confidential Academic Report</div>
         <script>
           window.onload = function() { window.print(); }
         </script>

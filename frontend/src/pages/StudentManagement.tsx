@@ -503,10 +503,10 @@ export const StudentManagement: React.FC = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Student Directory Export - Elite Minds</title>
+        <title>Student Directory Export - KANDRIX AI</title>
         <style>
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px; color: #111827; }
-          .header { border-bottom: 2px solid #6D5DFC; padding-bottom: 15px; margin-bottom: 20px; }
+          .header { border-bottom: 2px solid #2563EB; padding-bottom: 15px; margin-bottom: 20px; }
           .title { font-size: 24px; font-weight: 800; color: #111827; margin: 0; }
           .subtitle { font-size: 13px; color: #6B7280; margin-top: 5px; }
           table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
@@ -516,7 +516,7 @@ export const StudentManagement: React.FC = () => {
       </head>
       <body>
         <div class="header">
-          <h1 class="title">ELITE MINDS ATTENDANCE PORTAL</h1>
+          <h1 class="title">KANDRIX AI ATTENDANCE SYSTEM</h1>
           <p class="subtitle">Official Enrolled Student Directory Report (${targetList.length} Students)</p>
         </div>
         <table>
