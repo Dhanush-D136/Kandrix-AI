@@ -11,3 +11,15 @@ services:
         value: production
       - key: JWT_SECRET
         value: kandrix_ai_jwt_super_secret_key_2026
+      - key: SUPABASE_DB_HOST
+        value: aws-0-ap-southeast-1.pooler.supabase.com
+      - key: SUPABASE_DB_PORT
+        value: "5432"
+      - key: SUPABASE_DB_NAME
+        value: postgres
+      - key: SUPABASE_DB_USER
+        value: postgres.ilhecqtxawgzcllcjivg
+      - key: SUPABASE_DB_PASSWORD
+        value: Kingdhanush@24
+      - key: DATABASE_URL
+        value: postgresql://postgres.ilhecqtxawgzcllcjivg:Kingdhanush%4024@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres

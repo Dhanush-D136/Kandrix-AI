@@ -5,11 +5,11 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const dbPassword = process.env.SUPABASE_DB_PASSWORD || '';
-const host = process.env.SUPABASE_DB_HOST || 'db.ehmrnreqjadhjmmtlugj.supabase.co';
+const dbPassword = process.env.SUPABASE_DB_PASSWORD || 'Kingdhanush@24';
+const host = process.env.SUPABASE_DB_HOST || 'aws-0-ap-southeast-1.pooler.supabase.com';
 const port = parseInt(process.env.SUPABASE_DB_PORT || '5432', 10);
 const database = process.env.SUPABASE_DB_NAME || 'postgres';
-const user = process.env.SUPABASE_DB_USER || 'postgres';
+const user = process.env.SUPABASE_DB_USER || 'postgres.ilhecqtxawgzcllcjivg';
 
 let pool = null;
 let isSupabaseActive = false;
