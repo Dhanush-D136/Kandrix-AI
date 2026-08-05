@@ -457,8 +457,15 @@ CREATE POLICY "Allow server full access to system_settings" ON public.system_set
 DROP POLICY IF EXISTS "Allow server full access to faculty" ON public.faculty;
 CREATE POLICY "Allow server full access to faculty" ON public.faculty FOR ALL TO service_role USING (true) WITH CHECK (true);
 
+CREATE TABLE IF NOT EXISTS public.class_details (
+  id TEXT PRIMARY KEY,
+  name TEXT,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE public.class_details ENABLE ROW LEVEL SECURITY;
+
 DROP POLICY IF EXISTS "Allow server full access to class_details" ON public.class_details;
-CREATE POLICY "Allow server full access to class_details" ON public.class_details FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Allow server full access to class_details" ON public.class_details FOR ALL USING (true) WITH CHECK (true);
 
 -- 25. Spell Management Table
 CREATE TABLE IF NOT EXISTS public.spell_management (
@@ -485,3 +492,92 @@ CREATE POLICY "Allow public write access to spell_management" ON public.spell_ma
 INSERT INTO public.spell_management (id, spell_name, start_date, end_date, is_active)
 VALUES ('spell-default-1', 'Spell 1', '2026-08-01', '2026-09-30', 1)
 ON CONFLICT (id) DO NOTHING;
+
+-- 26. Class Portals Table
+CREATE TABLE IF NOT EXISTS public.class_portals (
+  id TEXT PRIMARY KEY,
+  portal_name TEXT,
+  portal_id TEXT UNIQUE NOT NULL,
+  display_name TEXT NOT NULL,
+  username TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  department TEXT NOT NULL,
+  course TEXT DEFAULT 'B.Tech',
+  batch TEXT DEFAULT '2024-2028',
+  semester INTEGER DEFAULT 5,
+  section TEXT DEFAULT 'A',
+  advisor TEXT,
+  room TEXT,
+  max_students INTEGER DEFAULT 70,
+  is_first_login INTEGER DEFAULT 1,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.class_portals ADD COLUMN IF NOT EXISTS portal_name TEXT;
+ALTER TABLE public.class_portals ADD COLUMN IF NOT EXISTS portal_id TEXT;
+ALTER TABLE public.class_portals ADD COLUMN IF NOT EXISTS display_name TEXT;
+ALTER TABLE public.class_portals ADD COLUMN IF NOT EXISTS username TEXT;
+ALTER TABLE public.class_portals ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE public.class_portals ADD COLUMN IF NOT EXISTS advisor TEXT;
+ALTER TABLE public.class_portals ADD COLUMN IF NOT EXISTS room TEXT;
+ALTER TABLE public.class_portals ADD COLUMN IF NOT EXISTS max_students INTEGER DEFAULT 70;
+ALTER TABLE public.class_portals ADD COLUMN IF NOT EXISTS is_first_login INTEGER DEFAULT 1;
+
+ALTER TABLE public.class_portals ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow server full access to class_portals" ON public.class_portals;
+CREATE POLICY "Allow server full access to class_portals" ON public.class_portals FOR ALL USING (true) WITH CHECK (true);
+
+-- 27. Institution Settings Table
+CREATE TABLE IF NOT EXISTS public.institution_settings (
+  id TEXT PRIMARY KEY,
+  institution_name TEXT DEFAULT 'KANDRIX AI Attendance System',
+  logo_url TEXT,
+  academic_year TEXT DEFAULT '2026-2027 (ODD)',
+  semester_settings TEXT DEFAULT 'Odd Semester (V)',
+  min_attendance_pct DOUBLE PRECISION DEFAULT 75.0,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.institution_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow server full access to institution_settings" ON public.institution_settings;
+CREATE POLICY "Allow server full access to institution_settings" ON public.institution_settings FOR ALL USING (true) WITH CHECK (true);
+
+-- 28. Courses Table
+CREATE TABLE IF NOT EXISTS public.courses (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  code TEXT UNIQUE NOT NULL,
+  duration_years INTEGER DEFAULT 4,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow server full access to courses" ON public.courses;
+CREATE POLICY "Allow server full access to courses" ON public.courses FOR ALL USING (true) WITH CHECK (true);
+
+-- 29. Batches Table
+CREATE TABLE IF NOT EXISTS public.batches (
+  id TEXT PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL,
+  start_year INTEGER,
+  end_year INTEGER,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.batches ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow server full access to batches" ON public.batches;
+CREATE POLICY "Allow server full access to batches" ON public.batches FOR ALL USING (true) WITH CHECK (true);
+
+-- 30. Semesters Table
+CREATE TABLE IF NOT EXISTS public.semesters (
+  id TEXT PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL,
+  semester_number INTEGER NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.semesters ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow server full access to semesters" ON public.semesters;
+CREATE POLICY "Allow server full access to semesters" ON public.semesters FOR ALL USING (true) WITH CHECK (true);
