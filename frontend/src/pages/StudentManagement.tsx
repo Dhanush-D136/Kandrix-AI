@@ -26,6 +26,7 @@ import {
   User as UserIcon,
   Key,
   Lock,
+  Unlock,
   Activity,
   CheckCircle2,
   AlertTriangle,
@@ -353,9 +354,50 @@ export const StudentManagement: React.FC = () => {
     }
   };
 
-  // Download Recommended Excel Template (.xlsx)
+  // Toggle Single Student Profile Editing Lock (Class Portal Incharge Control)
+  const handleToggleProfileLock = async (student: User, shouldLock: boolean) => {
+    try {
+      const res = await api.put(`/students/${student.id}/toggle-profile-lock`, { is_locked: shouldLock ? 1 : 0 });
+      alert(`✅ ${res.data.message}`);
+      fetchStudents();
+    } catch (err: any) {
+      alert(`❌ ${err.response?.data?.error || 'Failed to update profile lock status'}`);
+    }
+  };
+
+  // Bulk Toggle Student Profile Editing Lock
+  const handleBulkToggleProfileLock = async (shouldLock: boolean) => {
+    if (selectedStudentIds.length === 0) return;
+    try {
+      const res = await api.post('/students/bulk-toggle-profile-lock', {
+        studentIds: selectedStudentIds,
+        is_locked: shouldLock ? 1 : 0
+      });
+      alert(`✅ ${res.data.message}`);
+      fetchStudents();
+    } catch (err: any) {
+      alert(`❌ ${err.response?.data?.error || 'Failed to bulk toggle profile lock'}`);
+    }
+  };
+
+  // Download Recommended Excel Template (.xlsx) with 4-Column Simple Import Sheet
   const downloadRecommendedExcelTemplate = () => {
-    const templateData = [
+    const simpleTemplateData = [
+      {
+        'S.No.': 1,
+        'VH No.': 'VH13879',
+        'Reg. No.': '113024243120',
+        'Name': 'RONIK SAMUEL S'
+      },
+      {
+        'S.No.': 2,
+        'VH No.': 'VH13880',
+        'Reg. No.': '113024243121',
+        'Name': 'SARAVANAN M'
+      }
+    ];
+
+    const richTemplateData = [
       {
         'Register No*': '113024243032',
         'Student Name*': 'Dhanush',
@@ -366,7 +408,7 @@ export const StudentManagement: React.FC = () => {
         'Section*': 'C',
         'Class Portal ID*': 'AI3C',
         'VH No': 'VH13936',
-        'Student Email': 'dhanush@velhightech.com',
+        'Student Email': 'vh13936@velhightech.com',
         'Student Phone': '9876543210',
         'Parent Name': 'Mr. Kumar',
         'Parent Phone': '9876500000',
@@ -375,33 +417,17 @@ export const StudentManagement: React.FC = () => {
         'Username': '113024243032',
         'Default Password': '1234',
         'Roll No': 1
-      },
-      {
-        'Register No*': '113024243033',
-        'Student Name*': 'Aravind Kumar',
-        'Department*': 'AI & DS',
-        'Course': 'B.Tech AI & DS',
-        'Year*': 3,
-        'Semester*': 5,
-        'Section*': 'C',
-        'Class Portal ID*': 'AI3C',
-        'VH No': 'VH13937',
-        'Student Email': 'aravind@velhightech.com',
-        'Student Phone': '9876543211',
-        'Parent Name': 'Mr. Raman',
-        'Parent Phone': '9876500001',
-        'Blood Group': 'A+',
-        'Gender': 'Male',
-        'Username': '113024243033',
-        'Default Password': '1234',
-        'Roll No': 2
       }
     ];
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Student_Import_Template');
-    XLSX.writeFile(wb, 'KANDRIX_AI_Recommended_Student_Import_Template.xlsx');
+    const wsSimple = XLSX.utils.json_to_sheet(simpleTemplateData);
+    const wsRich = XLSX.utils.json_to_sheet(richTemplateData);
+
+    XLSX.utils.book_append_sheet(wb, wsSimple, 'Simple Class Import (4-Cols)');
+    XLSX.utils.book_append_sheet(wb, wsRich, 'Full Details Format');
+
+    XLSX.writeFile(wb, 'KANDRIX_AI_Student_Import_Template.xlsx');
   };
 
   // Excel Bulk Import Parsing
@@ -824,13 +850,33 @@ export const StudentManagement: React.FC = () => {
               {/* Export Buttons */}
               <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
                 {selectedStudentIds.length > 0 && (
-                  <button
-                    onClick={() => setShowBulkResetModal(true)}
-                    className="px-3 py-2 rounded-xl bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold flex items-center gap-1.5 shadow-sm"
-                  >
-                    <Key className="w-3.5 h-3.5" />
-                    Bulk Reset ({selectedStudentIds.length})
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setShowBulkResetModal(true)}
+                      className="px-3 py-2 rounded-xl bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Key className="w-3.5 h-3.5" />
+                      Bulk Reset ({selectedStudentIds.length})
+                    </button>
+
+                    <button
+                      onClick={() => handleBulkToggleProfileLock(true)}
+                      className="px-3 py-2 rounded-xl bg-slate-800 text-white hover:bg-slate-900 text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                      title="Lock student profile editing so students cannot edit profile details"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-amber-400" />
+                      Lock Profiles ({selectedStudentIds.length})
+                    </button>
+
+                    <button
+                      onClick={() => handleBulkToggleProfileLock(false)}
+                      className="px-3 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                      title="Unlock student profile editing so students can fill/update their profile details"
+                    >
+                      <Unlock className="w-3.5 h-3.5 text-white" />
+                      Unlock Profiles ({selectedStudentIds.length})
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={handleExportSecurityReport}
@@ -878,6 +924,7 @@ export const StudentManagement: React.FC = () => {
                     <th className="p-4">Official Email ID</th>
                     <th className="p-4">Phone Number</th>
                     <th className="p-4">Attendance %</th>
+                    <th className="p-4">Profile Edit Lock</th>
                     <th className="p-4">Account Status</th>
                     <th className="p-4 text-right">Actions</th>
                   </tr>
@@ -885,7 +932,7 @@ export const StudentManagement: React.FC = () => {
                 <tbody className="divide-y divide-[#E7E7E7]">
                   {students.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="p-10 text-center text-[#6B7280]">
+                      <td colSpan={10} className="p-10 text-center text-[#6B7280]">
                         No student accounts found matching your active filters.
                       </td>
                     </tr>
@@ -893,6 +940,7 @@ export const StudentManagement: React.FC = () => {
                     students.map((st) => {
                       const isSelected = selectedStudentIds.includes(st.id);
                       const isDefaultPass = Boolean((st as any).password_status === 'Default Password');
+                      const isProfileLocked = Boolean((st as any).is_profile_locked === 1);
                       const displayVH = (st as any).vh_number || (st.roll_number ? 'VH' + st.roll_number.slice(-5) : 'VH13936');
                       const displayEmail = st.email || `${displayVH.toLowerCase()}@velhightech.com`;
 
@@ -954,13 +1002,23 @@ export const StudentManagement: React.FC = () => {
                           </td>
                           <td className="p-4">
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
-                                isDefaultPass
-                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                  : 'bg-[#F3F0FF] text-[#6D5DFC] border-[#6D5DFC]/20'
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1 w-max ${
+                                isProfileLocked
+                                  ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-300'
                               }`}
                             >
-                              {isDefaultPass ? 'Default Password' : 'Custom Password'}
+                              {isProfileLocked ? (
+                                <>
+                                  <Lock className="w-3 h-3 text-amber-600" />
+                                  <span>Locked</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Unlock className="w-3 h-3 text-emerald-600" />
+                                  <span>Unlocked</span>
+                                </>
+                              )}
                             </span>
                           </td>
                           <td className="p-4">
@@ -984,6 +1042,17 @@ export const StudentManagement: React.FC = () => {
                                 title="View Full Profile Details"
                               >
                                 <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleToggleProfileLock(st, !isProfileLocked)}
+                                className={`p-1.5 rounded-full transition-colors ${
+                                  isProfileLocked
+                                    ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                                    : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
+                                }`}
+                                title={isProfileLocked ? 'Unlock Profile Editing for Student' : 'Lock Profile Editing for Student'}
+                              >
+                                {isProfileLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
                               </button>
                               <button
                                 onClick={() => openEditModal(st)}

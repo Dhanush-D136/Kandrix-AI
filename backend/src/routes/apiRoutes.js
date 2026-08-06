@@ -163,6 +163,8 @@ router.post('/students/:id/reset-device', verifyToken, requirePortalOrAdminAcces
 router.post('/students/:id/reset-password', verifyToken, requirePortalOrAdminAccess, studentController.resetStudentPassword);
 router.post('/students/:id/force-password-change', verifyToken, requirePortalOrAdminAccess, studentController.forceStudentPasswordChange);
 router.put('/students/:id/status', verifyToken, requirePortalOrAdminAccess, studentController.updateStudentAccountStatus);
+router.put('/students/:id/toggle-profile-lock', verifyToken, requirePortalOrAdminAccess, studentController.toggleStudentProfileLock);
+router.post('/students/bulk-toggle-profile-lock', verifyToken, requirePortalOrAdminAccess, studentController.bulkToggleStudentProfileLock);
 
 // --- Database Backup System ---
 const multer = require('multer');

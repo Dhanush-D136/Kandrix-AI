@@ -33,6 +33,7 @@ function runMigrations() {
     // Run direct PostgreSQL ALTER TABLE statements for Supabase compatibility
     const pgAlterStatements = [
       "ALTER TABLE public.users ADD COLUMN IF NOT EXISTS portal_id TEXT;",
+      "ALTER TABLE public.users ADD COLUMN IF NOT EXISTS is_profile_locked INTEGER DEFAULT 0;",
       "ALTER TABLE public.faculty ADD COLUMN IF NOT EXISTS portal_id TEXT;",
       "ALTER TABLE public.subjects ADD COLUMN IF NOT EXISTS portal_id TEXT;",
       "ALTER TABLE public.timetables ADD COLUMN IF NOT EXISTS portal_id TEXT;",
@@ -77,7 +78,8 @@ function runMigrations() {
           { col: 'status', type: "TEXT DEFAULT 'Active'" },
           { col: 'admission_year', type: 'INTEGER' },
           { col: 'username', type: 'TEXT' },
-          { col: 'vh_number', type: 'TEXT' }
+          { col: 'vh_number', type: 'TEXT' },
+          { col: 'is_profile_locked', type: 'INTEGER DEFAULT 0' }
         ];
 
         userMigrations.forEach(({ col, type }) => {

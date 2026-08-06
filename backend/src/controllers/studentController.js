@@ -10,7 +10,7 @@ function getStudents(req, res) {
   let query = `
     SELECT u.id, u.name, u.roll_number, u.vh_number, u.email, u.department, u.year, u.section, u.phone, u.profile_photo, 
            u.device_fingerprint, u.must_change_password, u.first_login, u.password_changed, u.password_changed_at,
-           u.dob, u.gender, u.blood_group, u.address, u.parent_name, u.parent_phone, u.bio, u.status, u.admission_year, u.username, u.portal_id, u.created_at,
+           u.dob, u.gender, u.blood_group, u.address, u.parent_name, u.parent_phone, u.bio, u.status, u.admission_year, u.username, u.portal_id, u.is_profile_locked, u.created_at,
            COUNT(DISTINCT ar.id) as attended_count,
            (SELECT COUNT(*) FROM attendance_sessions s WHERE s.department = u.department AND s.year = u.year AND s.section = u.section) as total_sessions
     FROM users u
@@ -196,6 +196,16 @@ async function updateStudent(req, res) {
   const { name, roll_number, vh_number, department, year, section, phone, profile_photo, dob, gender, blood_group, address, parent_name, parent_phone, bio, status, admission_year, new_password } = req.body;
 
   try {
+    // If request is from a student user, check if profile editing is locked by Class Portal Advisor
+    if (req.user && req.user.role === 'student') {
+      const lockCheck = await new Promise((resLock) => {
+        db.get("SELECT is_profile_locked FROM users WHERE id = ?", [id], (e, r) => resLock(r));
+      });
+      if (lockCheck && lockCheck.is_profile_locked === 1) {
+        return res.status(403).json({ error: '🔒 Profile editing is currently locked by your Class Portal Incharge.' });
+      }
+    }
+
     const studentStatus = status || 'Active';
     let vh = vh_number ? vh_number.trim().toUpperCase() : '';
     if (!vh && roll_number) {
@@ -694,19 +704,59 @@ function getLoginActivity(req, res) {
   );
 }
 
-// Password Audit Logs History
-function getPasswordAuditLogs(req, res) {
-  db.all(
-    `SELECT pal.*, u.name as student_name, u.roll_number, u.department, u.email
-     FROM password_audit_logs pal
-     JOIN users u ON pal.student_id = u.id
-     ORDER BY pal.changed_at DESC LIMIT 100`,
-    [],
-    (err, logs) => {
-      if (err) return res.status(500).json({ error: 'Failed to fetch password audit logs: ' + err.message });
-      res.json({ logs: logs || [] });
-    }
-  );
+// Toggle Profile Lock for single student (Class Portal Incharge control)
+function toggleStudentProfileLock(req, res) {
+  const { id } = req.params;
+  const { is_locked } = req.body; // 1 or 0
+
+  const lockVal = (is_locked === 1 || is_locked === true || is_locked === '1') ? 1 : 0;
+
+  db.run(`UPDATE users SET is_profile_locked = ? WHERE id = ? AND role = 'student'`, [lockVal, id], function (err) {
+    if (err) return res.status(500).json({ error: 'Failed to update profile lock status: ' + err.message });
+
+    // Supabase Sync
+    const { queryPg, isSupabaseActive } = require('../database/pgAdapter');
+    try {
+      if (isSupabaseActive && isSupabaseActive()) {
+        queryPg(`UPDATE public.users SET is_profile_locked = $1 WHERE id = $2 AND role = 'student'`, [lockVal, id]);
+      }
+    } catch (e) {}
+
+    res.json({
+      message: lockVal === 1 ? '🔒 Student profile editing locked.' : '🔓 Student profile editing unlocked.',
+      is_profile_locked: lockVal
+    });
+  });
+}
+
+// Bulk Toggle Profile Lock for multiple students
+function bulkToggleStudentProfileLock(req, res) {
+  const { studentIds, is_locked } = req.body;
+  const lockVal = (is_locked === 1 || is_locked === true || is_locked === '1') ? 1 : 0;
+
+  if (!Array.isArray(studentIds) || studentIds.length === 0) {
+    return res.status(400).json({ error: 'An array of student IDs is required for bulk profile locking.' });
+  }
+
+  const placeholders = studentIds.map(() => '?').join(',');
+  db.run(`UPDATE users SET is_profile_locked = ? WHERE id IN (${placeholders}) AND role = 'student'`, [lockVal, ...studentIds], function (err) {
+    if (err) return res.status(500).json({ error: 'Failed to bulk update profile lock status: ' + err.message });
+
+    // Supabase Sync
+    const { queryPg, isSupabaseActive } = require('../database/pgAdapter');
+    try {
+      if (isSupabaseActive && isSupabaseActive()) {
+        const pgPlaceholders = studentIds.map((_, idx) => `$${idx + 2}`).join(',');
+        queryPg(`UPDATE public.users SET is_profile_locked = $1 WHERE id IN (${pgPlaceholders}) AND role = 'student'`, [lockVal, ...studentIds]);
+      }
+    } catch (e) {}
+
+    res.json({
+      message: lockVal === 1 ? `🔒 Locked profile editing for ${this.changes} students.` : `🔓 Unlocked profile editing for ${this.changes} students.`,
+      updatedCount: this.changes,
+      is_profile_locked: lockVal
+    });
+  });
 }
 
 module.exports = {
@@ -723,5 +773,7 @@ module.exports = {
   updateStudentAccountStatus,
   getStudentProfileDetails,
   getLoginActivity,
-  getPasswordAuditLogs
+  getPasswordAuditLogs,
+  toggleStudentProfileLock,
+  bulkToggleStudentProfileLock
 };
