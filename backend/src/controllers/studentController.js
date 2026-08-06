@@ -704,6 +704,21 @@ function getLoginActivity(req, res) {
   );
 }
 
+// Password Audit Logs History
+function getPasswordAuditLogs(req, res) {
+  db.all(
+    `SELECT pal.*, u.name as student_name, u.roll_number, u.department, u.email
+     FROM password_audit_logs pal
+     JOIN users u ON pal.student_id = u.id
+     ORDER BY pal.changed_at DESC LIMIT 100`,
+    [],
+    (err, logs) => {
+      if (err) return res.status(500).json({ error: 'Failed to fetch password audit logs: ' + err.message });
+      res.json({ logs: logs || [] });
+    }
+  );
+}
+
 // Toggle Profile Lock for single student (Class Portal Incharge control)
 function toggleStudentProfileLock(req, res) {
   const { id } = req.params;
