@@ -286,61 +286,190 @@ function bulkDeleteStudents(req, res) {
   });
 }
 
-// Bulk Import Students
+// Bulk Import Students (Supports Rich 18-Column Format, Legacy Sheets, Upsert, Portal Linking, Supabase Sync)
 async function bulkImportStudents(req, res) {
   const studentsList = req.body.students;
 
   if (!Array.isArray(studentsList) || studentsList.length === 0) {
-    return res.status(400).json({ error: 'Valid array of students required for bulk import' });
+    return res.status(400).json({ error: 'Valid array of student records is required for bulk import.' });
   }
 
-  const defaultPasswordHash = await bcrypt.hash('1234', 10);
-  let importedCount = 0;
+  const { queryPg, isSupabaseActive } = require('../database/pgAdapter');
+
+  let insertedCount = 0;
+  let updatedCount = 0;
   let errors = [];
 
   for (const st of studentsList) {
     try {
-      const id = uuidv4();
-      const photo = st.profile_photo || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150`;
-      const roll = String(st.roll_number || st['Register Number'] || st['Roll Number'] || st['roll_number'] || '').trim();
-      
-      let vh = String(st.vh_number || st['VH Number'] || st['VH'] || st['vh_number'] || '').trim().toUpperCase();
-      if (!vh) {
-        const num = roll.replace(/[^0-9]/g, '');
-        vh = 'VH' + (num.length >= 4 ? num.slice(-5) : '13936');
+      // 1. Column Normalization
+      const roll_number = String(
+        st['Register No*'] || st['Register No.'] || st['Register No'] || st['Reg. No.'] || st['Reg No'] || st['Reg. No'] || st['RegNo'] || st['roll_number'] || st['Roll Number'] || st['Reg.No.'] || st['Reg.No'] || ''
+      ).trim();
+
+      const name = String(
+        st['Student Name*'] || st['Student Name'] || st['Name'] || st['student_name'] || st['name'] || ''
+      ).trim();
+
+      if (!roll_number || !name) {
+        errors.push(`Skipped row: Missing mandatory Register No or Student Name (Found roll: "${roll_number}", name: "${name}")`);
+        continue;
       }
 
-      const officialEmail = `${vh.toLowerCase()}@velhightech.com`;
+      const portal_id = String(
+        st['Class Portal ID*'] || st['Class Portal ID'] || st['Portal ID'] || st['Portal'] || st['portal_id'] || req.user?.portal_id || req.body?.portal_id || 'AI3C'
+      ).trim().toUpperCase();
 
-      await new Promise((resolve, reject) => {
-        db.run(
-          `INSERT OR REPLACE INTO users (id, name, roll_number, vh_number, email, role, department, year, section, phone, profile_photo, status, password_hash, must_change_password, is_first_login, first_login, password_changed)
-           VALUES (?, ?, ?, ?, ?, 'student', ?, ?, ?, ?, ?, 'Active', ?, 1, 1, 1, 0)`,
-          [id, st.name || st['Student Name'] || st['Name'], roll, vh, officialEmail, st.department || st['Department'] || 'AI & Data Science', parseInt(st.year || st['Year'] || 3), st.section || st['Section'] || 'A', st.phone || st['Phone'] || '', photo, defaultPasswordHash],
-          function (err) {
-            if (err) reject(err);
-            else {
-              if (this.changes > 0) {
-                importedCount++;
+      const department = String(
+        st['Department*'] || st['Department'] || st['department'] || req.user?.department || 'AI & DS'
+      ).trim();
+
+      const year = parseInt(st['Year*'] || st['Year'] || st['year'] || 3, 10) || 3;
+      const semester = parseInt(st['Semester*'] || st['Semester'] || st['semester'] || 5, 10) || 5;
+      const section = String(st['Section*'] || st['Section'] || st['section'] || 'C').trim().toUpperCase();
+
+      let vh_number = String(st['VH No'] || st['VH No.'] || st['VH Number'] || st['vh_number'] || st['VH'] || '').trim().toUpperCase();
+      if (!vh_number) {
+        const num = roll_number.replace(/[^0-9]/g, '');
+        vh_number = 'VH' + (num.length >= 4 ? num.slice(-5) : '13936');
+      }
+
+      const email = String(st['Student Email'] || st['Email'] || st['email'] || '').trim() || `${vh_number.toLowerCase()}@velhightech.com`;
+      const phone = String(st['Student Phone'] || st['Student Phone No'] || st['Student phone no'] || st['Phone'] || st['phone'] || '').trim();
+      const parent_name = String(st['Parent Name'] || st['parent_name'] || '').trim();
+      const parent_phone = String(st['Parent Phone'] || st['Parent Phone No'] || st['Parent Phone no'] || st['parent_phone'] || '').trim();
+      const blood_group = String(st['Blood Group'] || st['blood_group'] || '').trim();
+      const gender = String(st['Gender'] || st['gender'] || '').trim();
+      const username = String(st['Username'] || st['username'] || roll_number).trim();
+      const rawPassword = String(st['Default Password'] || st['Password'] || st['password'] || '1234').trim();
+
+      const photo = st.profile_photo || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150`;
+
+      // 2. Ensure Class Portal Container exists in class_portals table
+      await new Promise((resPort) => {
+        db.get("SELECT id FROM class_portals WHERE portal_id = ? OR username = ?", [portal_id, portal_id], (ePort, foundCp) => {
+          if (!foundCp) {
+            const cpId = `cp-${portal_id.toLowerCase()}`;
+            const defHash = bcrypt.hashSync('1234', 10);
+            db.run(
+              `INSERT OR IGNORE INTO class_portals (id, portal_id, portal_name, display_name, username, password_hash, department, room, max_students)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 'F307', 60)`,
+              [cpId, portal_id, `${portal_id} Portal`, portal_id, portal_id, defHash, department],
+              () => resPort(true)
+            );
+          } else {
+            resPort(true);
+          }
+        });
+      });
+
+      // 3. Upsert Check in Local SQLite
+      const existingStudent = await new Promise((resolve) => {
+        db.get("SELECT id FROM users WHERE roll_number = ? AND role = 'student'", [roll_number], (e, row) => resolve(row));
+      });
+
+      if (existingStudent) {
+        // UPDATE existing student record
+        const studentId = existingStudent.id;
+        await new Promise((resolve, reject) => {
+          db.run(
+            `UPDATE users SET 
+               name = ?, vh_number = ?, email = ?, department = ?, year = ?, section = ?,
+               phone = ?, parent_name = ?, parent_phone = ?, blood_group = ?, gender = ?,
+               portal_id = ?, username = ?
+             WHERE id = ? AND role = 'student'`,
+            [name, vh_number, email, department, year, section, phone, parent_name, parent_phone, blood_group, gender, portal_id, username, studentId],
+            function (err) {
+              if (err) reject(err);
+              else resolve(true);
+            }
+          );
+        });
+
+        // Supabase PostgreSQL Update
+        try {
+          if (isSupabaseActive && isSupabaseActive()) {
+            await queryPg(
+              `UPDATE public.users SET 
+                 name = $1, vh_number = $2, email = $3, department = $4, year = $5, section = $6,
+                 phone = $7, parent_name = $8, parent_phone = $9, blood_group = $10, gender = $11,
+                 portal_id = $12, username = $13
+               WHERE roll_number = $14 AND role = 'student'`,
+              [name, vh_number, email, department, year, section, phone, parent_name, parent_phone, blood_group, gender, portal_id, username, roll_number]
+            );
+          }
+        } catch (pgErr) {
+          console.warn(`Supabase PG update warning for ${roll_number}:`, pgErr.message);
+        }
+
+        updatedCount++;
+      } else {
+        // INSERT new student record
+        const studentId = uuidv4();
+        const password_hash = await bcrypt.hash(rawPassword, 10);
+
+        await new Promise((resolve, reject) => {
+          db.run(
+            `INSERT INTO users (
+               id, name, roll_number, vh_number, email, role, department, year, section,
+               phone, parent_name, parent_phone, blood_group, gender, portal_id, username, password_hash, profile_photo,
+               status, first_login, is_first_login, must_change_password, password_changed
+             ) VALUES (
+               ?, ?, ?, ?, ?, 'student', ?, ?, ?,
+               ?, ?, ?, ?, ?, ?, ?, ?, ?,
+               'Active', 1, 1, 1, 0
+             )`,
+            [studentId, name, roll_number, vh_number, email, department, year, section, phone, parent_name, parent_phone, blood_group, gender, portal_id, username, password_hash, photo],
+            function (err) {
+              if (err) reject(err);
+              else {
                 const auditId = uuidv4();
                 db.run(
-                  `INSERT INTO password_audit_logs (id, student_id, changed_by, action, changed_at) VALUES (?, ?, 'Admin', 'Bulk Account Import (Default Password)', CURRENT_TIMESTAMP)`,
-                  [auditId, id]
+                  `INSERT INTO password_audit_logs (id, student_id, changed_by, action, changed_at) VALUES (?, ?, 'Admin', 'Bulk Excel Import Account Setup', CURRENT_TIMESTAMP)`,
+                  [auditId, studentId]
                 );
+                resolve(true);
               }
-              resolve(true);
             }
+          );
+        });
+
+        // Supabase PostgreSQL Insert
+        try {
+          if (isSupabaseActive && isSupabaseActive()) {
+            await queryPg(
+              `INSERT INTO public.users (
+                 id, name, roll_number, vh_number, email, role, department, year, section,
+                 phone, parent_name, parent_phone, blood_group, gender, portal_id, username, password_hash, profile_photo,
+                 status, first_login, is_first_login, must_change_password, password_changed
+               ) VALUES (
+                 $1, $2, $3, $4, $5, 'student', $6, $7, $8,
+                 $9, $10, $11, $12, $13, $14, $15, $16, $17,
+                 'Active', 1, 1, 1, 0
+               ) ON CONFLICT (roll_number) DO UPDATE SET
+                 name = EXCLUDED.name, vh_number = EXCLUDED.vh_number, email = EXCLUDED.email,
+                 department = EXCLUDED.department, year = EXCLUDED.year, section = EXCLUDED.section,
+                 phone = EXCLUDED.phone, parent_name = EXCLUDED.parent_name, parent_phone = EXCLUDED.parent_phone,
+                 blood_group = EXCLUDED.blood_group, gender = EXCLUDED.gender, portal_id = EXCLUDED.portal_id`,
+              [studentId, name, roll_number, vh_number, email, department, year, section, phone, parent_name, parent_phone, blood_group, gender, portal_id, username, password_hash, photo]
+            );
           }
-        );
-      });
+        } catch (pgErr) {
+          console.warn(`Supabase PG insert warning for ${roll_number}:`, pgErr.message);
+        }
+
+        insertedCount++;
+      }
     } catch (e) {
-      errors.push(`Failed for ${st.roll_number || st.name}: ${e.message}`);
+      errors.push(`Error processing student "${st['Register No*'] || st['Register Number'] || st['Name']}": ${e.message}`);
     }
   }
 
   res.json({
-    message: `Bulk import completed. Successfully imported ${importedCount} student accounts.`,
-    importedCount,
+    message: `Bulk import finished. Processed ${studentsList.length} records (${insertedCount} new created, ${updatedCount} existing updated).`,
+    insertedCount,
+    updatedCount,
+    importedCount: insertedCount + updatedCount,
     errors
   });
 }

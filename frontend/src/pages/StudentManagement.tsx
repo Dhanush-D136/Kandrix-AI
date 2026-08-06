@@ -353,6 +353,57 @@ export const StudentManagement: React.FC = () => {
     }
   };
 
+  // Download Recommended Excel Template (.xlsx)
+  const downloadRecommendedExcelTemplate = () => {
+    const templateData = [
+      {
+        'Register No*': '113024243032',
+        'Student Name*': 'Dhanush',
+        'Department*': 'AI & DS',
+        'Course': 'B.Tech AI & DS',
+        'Year*': 3,
+        'Semester*': 5,
+        'Section*': 'C',
+        'Class Portal ID*': 'AI3C',
+        'VH No': 'VH13936',
+        'Student Email': 'dhanush@velhightech.com',
+        'Student Phone': '9876543210',
+        'Parent Name': 'Mr. Kumar',
+        'Parent Phone': '9876500000',
+        'Blood Group': 'O+',
+        'Gender': 'Male',
+        'Username': '113024243032',
+        'Default Password': '1234',
+        'Roll No': 1
+      },
+      {
+        'Register No*': '113024243033',
+        'Student Name*': 'Aravind Kumar',
+        'Department*': 'AI & DS',
+        'Course': 'B.Tech AI & DS',
+        'Year*': 3,
+        'Semester*': 5,
+        'Section*': 'C',
+        'Class Portal ID*': 'AI3C',
+        'VH No': 'VH13937',
+        'Student Email': 'aravind@velhightech.com',
+        'Student Phone': '9876543211',
+        'Parent Name': 'Mr. Raman',
+        'Parent Phone': '9876500001',
+        'Blood Group': 'A+',
+        'Gender': 'Male',
+        'Username': '113024243033',
+        'Default Password': '1234',
+        'Roll No': 2
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Student_Import_Template');
+    XLSX.writeFile(wb, 'KANDRIX_AI_Recommended_Student_Import_Template.xlsx');
+  };
+
   // Excel Bulk Import Parsing
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -373,11 +424,11 @@ export const StudentManagement: React.FC = () => {
         }
 
         const res = await api.post('/students/bulk-import', { students: data });
-        alert(`Successfully imported ${res.data.importedCount} student accounts!`);
+        alert(`✅ Bulk import completed!\n${res.data.message}`);
         setShowImportModal(false);
         fetchStudents();
-      } catch (err) {
-        alert('Error parsing Excel file. Please ensure correct template structure.');
+      } catch (err: any) {
+        alert(`❌ Error parsing Excel file: ${err.response?.data?.error || err.message}`);
       }
     };
     reader.readAsBinaryString(file);
@@ -1961,24 +2012,54 @@ export const StudentManagement: React.FC = () => {
       {/* ================================================== */}
       {showImportModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-[24px] p-6 border border-[#E7E7E7] shadow-2xl space-y-4 text-center">
+          <div className="bg-white w-full max-w-xl rounded-[28px] p-6 sm:p-8 border border-[#E7E7E7] shadow-2xl space-y-5 text-left">
             <div className="flex items-center justify-between pb-3 border-b border-[#E7E7E7]">
-              <h3 className="font-display font-bold text-lg text-[#111827]">Bulk Import Students</h3>
+              <div>
+                <h3 className="font-display font-bold text-xl text-[#111827]">Bulk Import Students via Excel</h3>
+                <p className="text-xs text-[#6B7280]">Supports rich 18-column recommended format & legacy sheets.</p>
+              </div>
               <button onClick={() => setShowImportModal(false)} className="text-[#6B7280] hover:text-[#111827]">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-8 border-2 border-dashed border-[#E7E7E7] hover:border-[#12B76A] rounded-2xl bg-[#FAFAFA] transition-colors space-y-3">
+            {/* Template Download Banner */}
+            <div className="p-4 rounded-2xl bg-[#ECFDF5] border border-[#12B76A]/30 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-extrabold text-[#065F46] block">📥 Download Recommended Excel Template</span>
+                <span className="text-[11px] text-[#047857]">Pre-formatted with 18 required & optional student fields</span>
+              </div>
+              <button
+                type="button"
+                onClick={downloadRecommendedExcelTemplate}
+                className="px-4 py-2 rounded-full bg-[#12B76A] hover:bg-[#0D9488] text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Get Template (.xlsx)</span>
+              </button>
+            </div>
+
+            {/* Drag & Drop Upload Zone */}
+            <div className="p-8 border-2 border-dashed border-[#E7E7E7] hover:border-[#12B76A] rounded-2xl bg-[#FAFAFA] transition-colors text-center space-y-3">
               <Upload className="w-10 h-10 text-[#12B76A] mx-auto animate-bounce" />
-              <p className="text-xs text-[#111827] font-bold">Upload Excel / CSV File (.xlsx / .csv)</p>
-              <p className="text-[10px] text-[#6B7280]">Columns: Register Number, Name, Email, Phone, Department, Year, Section</p>
+              <p className="text-xs text-[#111827] font-bold">Select or Drag Excel / CSV File (.xlsx / .csv)</p>
+              <p className="text-[10px] text-[#6B7280] max-w-sm mx-auto">
+                Required: Register No*, Student Name*, Department*, Year*, Semester*, Section*, Class Portal ID*. Auto-links students to portal containers.
+              </p>
               <input
                 type="file"
                 accept=".xlsx, .xls, .csv"
                 onChange={handleFileUpload}
                 className="block w-full text-xs text-[#6B7280] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#ECFDF5] file:text-[#12B76A]"
               />
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 font-mono space-y-1">
+              <p className="font-bold text-slate-800">⚡ Automated Import Rules:</p>
+              <p>• <strong>Upsert:</strong> If Register No. exists, updates information cleanly.</p>
+              <p>• <strong>Portal Linking:</strong> Linked directly to specified Class Portal container (e.g. AI3C).</p>
+              <p>• <strong>Security:</strong> Default passwords are bcrypt hashed and require first-login change.</p>
+              <p>• <strong>Supabase Sync:</strong> Records synced simultaneously to Supabase Cloud & SQLite.</p>
             </div>
           </div>
         </div>
