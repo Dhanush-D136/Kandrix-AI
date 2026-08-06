@@ -118,26 +118,6 @@ function getStudents(req, res) {
                 inactiveStudents,
                 defaultPasswordCount,
                 customPasswordCount,
-        if (isDef) defaultPasswordCount++;
-        else customPasswordCount++;
-      });
-
-      // Count logged in today & active sessions
-      const todayStr = new Date().toISOString().split('T')[0];
-      db.get(
-        `SELECT COUNT(DISTINCT student_id) as count FROM login_logs WHERE DATE(login_time) = DATE('now') OR login_time LIKE ?`,
-        [`${todayStr}%`],
-        (err3, loggedInRow) => {
-          db.get(`SELECT COUNT(*) as count FROM attendance_sessions WHERE status = 'active'`, [], (err4, activeSessionsRow) => {
-            res.json({
-              students: formattedStudents,
-              total: formattedStudents.length,
-              summaryStats: {
-                totalStudents,
-                activeStudents,
-                inactiveStudents,
-                defaultPasswordCount,
-                customPasswordCount,
                 loggedInToday: loggedInRow ? loggedInRow.count : 0,
                 activeSessions: activeSessionsRow ? activeSessionsRow.count : 0
               }
