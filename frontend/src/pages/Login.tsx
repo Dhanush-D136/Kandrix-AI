@@ -17,11 +17,11 @@ import {
 } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const { loginAdmin, loginStudent, loginFaculty } = useAuth();
+  const { login, loginAdmin, loginStudent, loginFaculty } = useAuth();
   const [role, setRole] = useState<'super_admin' | 'class_portal' | 'student'>('super_admin');
 
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+  const [identifier, setIdentifier] = useState('Vel');
+  const [password, setPassword] = useState('Elite Minds');
 
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,7 +38,9 @@ export const Login: React.FC = () => {
 
     setIsLoading(true);
     try {
-      if (role === 'super_admin') {
+      if (login) {
+        await login(identifier.trim(), password, role);
+      } else if (role === 'super_admin') {
         await loginAdmin(identifier.trim(), password);
       } else if (role === 'class_portal') {
         await loginFaculty(identifier.trim(), password);
@@ -46,7 +48,7 @@ export const Login: React.FC = () => {
         await loginStudent(identifier.trim(), password);
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Authentication failed. Please verify your credentials.');
+      setError(err.response?.data?.error || 'Invalid Credentials');
     } finally {
       setIsLoading(false);
     }
@@ -170,7 +172,7 @@ export const Login: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => { setRole('class_portal'); setError(''); setIdentifier(''); setPassword(''); }}
+              onClick={() => { setRole('class_portal'); setError(''); setIdentifier('AI3A'); setPassword('1234'); }}
               className={`py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 ${
                 role === 'class_portal'
                   ? 'bg-white text-purple-600 shadow-sm font-bold border border-slate-200/80'
@@ -183,7 +185,7 @@ export const Login: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => { setRole('student'); setError(''); setIdentifier(''); setPassword(''); }}
+              onClick={() => { setRole('student'); setError(''); setIdentifier('21104001'); setPassword('1234'); }}
               className={`py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 ${
                 role === 'student'
                   ? 'bg-white text-emerald-600 shadow-sm font-bold border border-slate-200/80'

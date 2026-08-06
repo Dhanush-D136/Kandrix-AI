@@ -3,7 +3,7 @@ export interface User {
   name: string;
   roll_number?: string;
   email: string;
-  role: 'admin' | 'student' | 'faculty';
+  role: 'admin' | 'student' | 'faculty' | 'class_portal';
   department?: string;
   year?: number;
   section?: string;
@@ -12,6 +12,8 @@ export interface User {
   device_fingerprint?: string;
   must_change_password?: number;
   is_first_login?: boolean | number;
+  first_login?: boolean | number;
+  password_changed?: number;
   password_changed_at?: string;
   attendance_percentage?: number;
   status?: string;
@@ -70,6 +72,7 @@ export interface TimetableItem {
   day: string;
   period_number?: number | string;
   subject_name: string;
+  subject?: string;
   faculty_name: string;
   start_time: string;
   end_time: string;
@@ -135,5 +138,5 @@ export interface DashboardMetrics {
   };
   departmentStats: Array<{ department: string; student_count: number }>;
   dailyTrends: Array<{ date: string; count: number }>;
-  subjectStats?: Array<{ subject: string; present: number; total: number; percentage: number }>;
+  subjectStats?: Array<{ subject: string; present: number; total: number; percentage: number; students?: number }>;
 }

@@ -65,8 +65,8 @@ export const StudentTimetablePage: React.FC = () => {
     };
   }, [user?.department, user?.year, user?.section, user?.id]);
 
-  const todayClasses = timetables.filter((t) => (t.day || '').toLowerCase() === todayName.toLowerCase()).sort((a, b) => (a.period_number || 0) - (b.period_number || 0));
-  const activeDayClasses = timetables.filter((t) => (t.day || '').toLowerCase() === activeDay.toLowerCase()).sort((a, b) => (a.period_number || 0) - (b.period_number || 0));
+  const todayClasses = timetables.filter((t) => (t.day || '').toLowerCase() === todayName.toLowerCase()).sort((a, b) => (Number(a.period_number) || 0) - (Number(b.period_number) || 0));
+  const activeDayClasses = timetables.filter((t) => (t.day || '').toLowerCase() === activeDay.toLowerCase()).sort((a, b) => (Number(a.period_number) || 0) - (Number(b.period_number) || 0));
 
   const parseMins = (tStr?: string) => {
     if (!tStr) return 0;

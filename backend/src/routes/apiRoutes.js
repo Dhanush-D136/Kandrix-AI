@@ -10,9 +10,10 @@ const erpController = require('../controllers/erpController');
 const facultyController = require('../controllers/facultyController');
 
 // --- Auth Routes ---
+router.post('/auth/login', authController.login);
 router.post('/auth/admin/login', authController.adminLogin);
 router.post('/auth/student/login', authController.studentLogin);
-router.post('/auth/faculty/login', facultyController.facultyLogin);
+router.post('/auth/faculty/login', authController.portalLogin);
 router.post('/auth/faculty/change-password', facultyController.facultyChangePassword);
 router.post('/auth/student/first-login-change-password', verifyToken, authController.firstTimePasswordChange);
 router.post('/auth/change-password', verifyToken, authController.changePassword);

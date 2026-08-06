@@ -77,7 +77,7 @@ export const DynamicQRDisplay: React.FC<DynamicQRDisplayProps> = ({
 
       setAttendanceCode(newCode);
       setTimestamp(payload.timestamp || Date.now());
-      setTimeLeft(6);
+      setTimeLeft(7);
       await renderQRCode(payload);
     } catch (err) {
       console.error('Failed to rotate QR', err);
@@ -93,7 +93,7 @@ export const DynamicQRDisplay: React.FC<DynamicQRDisplayProps> = ({
       setTimeLeft((prev) => {
         if (prev <= 1) {
           rotateQR();
-          return 6;
+          return 7;
         }
         return prev - 1;
       });
@@ -105,7 +105,7 @@ export const DynamicQRDisplay: React.FC<DynamicQRDisplayProps> = ({
         const payload = data.qrPayload || data;
         setAttendanceCode(payload.nonce || data.attendanceCode);
         setTimestamp(payload.timestamp || Date.now());
-        setTimeLeft(6);
+        setTimeLeft(7);
         renderQRCode(payload);
       }
     });
@@ -123,7 +123,7 @@ export const DynamicQRDisplay: React.FC<DynamicQRDisplayProps> = ({
         <div className="space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#ECFDF5] border border-[#12B76A]/30 text-[#12B76A] text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5 animate-spin text-[#12B76A]" />
-            6s Dynamic Real-Time Rotating QR
+            7s Dynamic Real-Time Rotating QR + Bluetooth Proximity
           </div>
           
           <div className="pt-1">

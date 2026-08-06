@@ -44,6 +44,7 @@ interface SubjectStat {
   absentCount: number;
   lastClassDate: string;
   studentsBelow75: number;
+  students?: any[];
 }
 
 interface AttendanceRecordItem {
@@ -565,7 +566,7 @@ export const AttendanceReportsPage: React.FC<AttendanceReportsPageProps> = ({ on
           )}
 
           <button
-            onClick={handleExportExcel}
+            onClick={() => handleExportExcel('xlsx')}
             className="px-4 py-2 rounded-full bg-[#ECFDF5] text-[#12B76A] text-xs font-bold border border-[#12B76A]/20 hover:bg-[#12B76A]/10 transition-all flex items-center gap-1.5"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" /> Export Excel
@@ -647,7 +648,7 @@ export const AttendanceReportsPage: React.FC<AttendanceReportsPageProps> = ({ on
                     </div>
 
                     <button
-                      onClick={handleExportSubjectExcel}
+                      onClick={() => handleExportSubjectExcel('xlsx')}
                       className="px-3.5 py-1.5 rounded-full bg-[#ECFDF5] text-[#12B76A] text-xs font-bold border border-[#12B76A]/20 hover:bg-[#12B76A]/10 flex items-center gap-1"
                     >
                       <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
@@ -1086,7 +1087,7 @@ export const AttendanceReportsPage: React.FC<AttendanceReportsPageProps> = ({ on
                   <p className="text-xs text-[#6B7280] font-medium mt-0.5">Students requiring attendance counseling and parent notification</p>
                 </div>
                 <button
-                  onClick={handleExportDefaulters}
+                  onClick={() => handleExportDefaulters('xlsx')}
                   className="px-3.5 py-1.5 rounded-full bg-rose-50 text-rose-600 text-xs font-bold border border-rose-200 flex items-center gap-1 hover:bg-rose-100"
                 >
                   <Download className="w-3.5 h-3.5" /> Export Defaulters
@@ -1196,7 +1197,7 @@ export const AttendanceReportsPage: React.FC<AttendanceReportsPageProps> = ({ on
                 </button>
 
                 <button
-                  onClick={handleExportExcel}
+                  onClick={() => handleExportExcel('xlsx')}
                   className="px-4 py-2 rounded-full bg-[#6D5DFC] text-white text-xs font-bold shadow-floating hover:bg-[#5b4be0] flex items-center gap-1.5"
                 >
                   <Download className="w-3.5 h-3.5" /> Export Matrix

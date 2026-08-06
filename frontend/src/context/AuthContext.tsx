@@ -8,6 +8,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   mustChangePasswordTempToken: string | null;
+  login: (username: string, pass: string, role: string) => Promise<any>;
   loginAdmin: (email: string, pass: string) => Promise<any>;
   loginStudent: (rollNumber: string, pass: string) => Promise<any>;
   loginFaculty: (identifier: string, pass: string) => Promise<any>;
@@ -76,6 +77,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('smartattend_auth_error', handleAuthError);
     };
   }, []);
+
+  const login = async (username: string, pass: string, role: string) => {
+    console.log('[UNIFIED LOGIN REQUEST] Sending credentials to /api/auth/login...', { username, role });
+    const res = await api.post('/auth/login', { username, password: pass, role });
+    const { token, user } = res.data;
+
+    localStorage.setItem('smartattend_token', token);
+    localStorage.setItem('smartattend_user', JSON.stringify(user));
+
+    setToken(token);
+    setUser(user);
+    setIsLoading(false);
+    return res.data;
+  };
 
   const loginAdmin = async (email: string, pass: string) => {
     console.log('[LOGIN ADMIN REQUEST] Sending credentials to /api/auth/admin/login...', { email });
@@ -193,6 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         token,
         isLoading,
         mustChangePasswordTempToken,
+        login,
         loginAdmin,
         loginStudent,
         loginFaculty,

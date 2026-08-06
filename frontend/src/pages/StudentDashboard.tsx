@@ -3,7 +3,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getSocket } from '../services/socket';
 import { AttendanceRecord, TimetableItem, SubjectItem } from '../types';
-import { MapPin, ShieldCheck, History, Flame, CheckCircle2, XCircle, Award, Sparkles, BookOpen, Calendar, Clock, AlertTriangle, Bell, Calculator, TrendingUp, BarChart3 } from 'lucide-react';
+import { MapPin, ShieldCheck, History, Flame, CheckCircle2, XCircle, Award, Sparkles, BookOpen, Calendar, Clock, AlertTriangle, Bell, Calculator, TrendingUp, BarChart3, Zap } from 'lucide-react';
 import { spellAttendanceService, StudentSpellAttendanceData } from '../services/spellAttendanceService';
 
 import { HeroBanner } from '../components/HeroBanner';
@@ -151,7 +151,7 @@ export const StudentDashboard: React.FC = () => {
 
   const attendanceRate = spellData ? spellData.spellPercentage : (totalClasses > 0 ? Math.round((presentClasses / Math.max(1, todayScheduledPeriods)) * 100) : null);
   const isPresentToday = todayAttendedPeriods > 0;
-  const streak = spellData?.activeStreak || (isPresentToday ? 1 : 0);
+  const streak = (spellData as any)?.activeStreak || (isPresentToday ? 1 : 0);
 
   // Recovery Calculator logic for overall attendance
   const requiredPct = 75;
@@ -226,6 +226,10 @@ export const StudentDashboard: React.FC = () => {
 
         {/* Status Badges */}
         <div className="flex flex-wrap items-center gap-3">
+          <div className="px-3.5 py-2 rounded-full bg-[#ECFDF5] border border-[#12B76A]/20 text-xs text-[#12B76A] flex items-center gap-1.5 font-bold shadow-sm">
+            <Zap className="w-4 h-4 text-[#12B76A] animate-pulse" />
+            <span>Bluetooth Proximity Active</span>
+          </div>
           <div className={`px-3.5 py-2 rounded-full border text-xs font-bold shadow-sm ${defaulterColor}`}>
             <span>Status: {defaulterStatus}</span>
           </div>

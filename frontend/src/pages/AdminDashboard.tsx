@@ -7,6 +7,7 @@ import { Users, CheckCircle2, XCircle, Percent, QrCode, TrendingUp, Radio, Activ
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid } from 'recharts';
 
 import { DataIntegrityAuditPanel } from '../components/DataIntegrityAuditPanel';
+import { HeroBanner } from '../components/HeroBanner';
 
 export const AdminDashboard: React.FC = () => {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);

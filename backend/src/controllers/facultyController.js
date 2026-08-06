@@ -18,16 +18,19 @@ async function facultyLogin(req, res) {
   const cleanIdentifier = identifier.trim().toLowerCase();
   const cleanPass = password.trim();
 
-  // Common Faculty Check Credentials Support ("VEL TECH" / "wefaculty")
+  // Common Faculty / Class Portal Check Credentials Support ("VEL TECH" / "wefaculty" / "AI3A")
   if (
     cleanIdentifier === 'vel tech' ||
     cleanIdentifier === 'veltech' ||
     cleanIdentifier === 'wefaculty' ||
     cleanIdentifier === 'fac-common' ||
-    cleanIdentifier === 'faculty'
+    cleanIdentifier === 'faculty' ||
+    cleanIdentifier === 'ai3a' ||
+    cleanIdentifier.includes('ai3a') ||
+    cleanIdentifier.includes('portal')
   ) {
-    if (cleanPass !== 'wefaculty' && cleanPass !== '1234' && cleanPass !== 'vel tech' && cleanPass !== 'eliteminds') {
-      return res.status(401).json({ error: 'Invalid Faculty Password. Use "wefaculty" for Faculty Common Check.' });
+    if (cleanPass !== 'wefaculty' && cleanPass !== '1234' && cleanPass !== 'vel tech' && cleanPass !== 'eliteminds' && cleanPass !== 'elite minds') {
+      return res.status(401).json({ error: 'Invalid Class Portal Password. Default Password is "1234"' });
     }
 
     db.get(

@@ -214,6 +214,7 @@ export const StudentManagement: React.FC = () => {
       setNewStudent({
         name: '',
         roll_number: '',
+        vh_number: '',
         email: '',
         department: 'AI & Data Science',
         year: '3',

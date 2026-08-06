@@ -57,9 +57,10 @@ export const FacultyDashboard: React.FC = () => {
   const [isForcePassSubmitting, setIsForcePassSubmitting] = useState<boolean>(false);
 
   const mustChangePass = Boolean(
-    user && (user.must_change_password === 1 || user.is_first_login || user.first_login || user.password_changed === 0)
+    user && (user.must_change_password === 1 || user.is_first_login === true || user.is_first_login === 1 || user.password_changed === 0)
   );
 
+  // Profile Form States
   const handleForcePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setForcePassError('');
@@ -192,7 +193,7 @@ export const FacultyDashboard: React.FC = () => {
         ['Department & Section', `${activeSession.department || 'AI & DS'} • Section ${activeSession.section || 'A'}`],
         ['Security Token Engine', 'Real-Time 1s HMAC-SHA256 Dynamic QR Rotation']
       ],
-      headStyles: { fillStyle: 'F', fillColor: [109, 93, 252], textColor: 255, fontStyle: 'bold' },
+      headStyles: { fillColor: [109, 93, 252], textColor: 255, fontStyle: 'bold' },
       styles: { fontSize: 9 }
     });
 
@@ -317,6 +318,8 @@ export const FacultyDashboard: React.FC = () => {
   // Profile Form State
   const [facultyPhone, setFacultyPhone] = useState<string>(user?.phone || '+91 9876501234');
   const [facultyQualification, setFacultyQualification] = useState<string>((user as any)?.qualification || 'M.Tech (AI & DS)');
+  const [facultyExperience, setFacultyExperience] = useState<string>((user as any)?.experience || '8 Years');
+  const [facultySpecialization, setFacultySpecialization] = useState<string>((user as any)?.specialization || 'Artificial Intelligence & Machine Learning');
   const getValidFacultyPhoto = (photoUrl?: string) => {
     if (!photoUrl || photoUrl.includes('unsplash.com')) {
       return 'https://universitykart.b-cdn.net/Content/upload/admin/44wzl2yr.t4g.png';
