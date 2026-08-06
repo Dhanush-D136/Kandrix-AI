@@ -20,6 +20,16 @@ function getStudents(req, res) {
 
   const params = [];
 
+  // Data Isolation: If Class Portal user, automatically scope to their portal department and section
+  if (req.user && (req.user.role === 'class_portal' || req.user.role === 'faculty')) {
+    const portalName = (req.user.name || req.user.username || req.user.portal_id || '').toUpperCase();
+    if (portalName.includes('CSE')) {
+      query += ` AND (u.department LIKE '%CSE%' OR u.department LIKE '%Computer Science%')`;
+    } else if (portalName.includes('AI') || portalName.includes('DS')) {
+      query += ` AND (u.department LIKE '%AI%' OR u.department LIKE '%DS%' OR u.department LIKE '%Data%')`;
+    }
+  }
+
   if (search && search.trim() !== '') {
     query += ` AND (u.name LIKE ? OR u.roll_number LIKE ? OR u.vh_number LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)`;
     const searchParam = `%${search.trim()}%`;
