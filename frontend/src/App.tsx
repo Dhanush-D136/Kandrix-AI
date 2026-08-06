@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { FirstLoginModal } from './components/FirstLoginModal';
 
 import { Login } from './pages/Login';
@@ -133,6 +134,7 @@ const MainLayout: React.FC = () => {
           )}
         </main>
       </div>
+      <MobileBottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>
   );
 };
