@@ -215,17 +215,19 @@ function autoMapSubjectToFaculty(subjectId, subjectName, subjectCode, department
 }
 
 function createSubject(req, res) {
-  const { name, code, type, department, year, semester, section, faculty_name, credits, status, description } = req.body;
+  const { name, code, type, department, year, semester, section, faculty_name, credits, status, description, portal_id } = req.body;
   if (!name || !code) return res.status(400).json({ error: 'Subject Name and Subject Code are required.' });
 
   const id = 'sub-' + uuidv4();
   const cleanName = name.trim();
   const cleanCode = code.trim().toUpperCase();
   const cleanFacName = faculty_name ? faculty_name.trim() : 'Faculty Member';
+  
+  const activePortalId = (req.user && req.user.role === 'class_portal') ? (req.user.portal_id || req.user.username) : (portal_id || null);
 
   db.run(
-    `INSERT INTO subjects (id, name, code, type, department, year, semester, section, faculty_name, credits, description, status, is_archived) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+    `INSERT INTO subjects (id, name, code, type, department, year, semester, section, faculty_name, credits, description, status, is_archived, portal_id) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
     [
       id,
       cleanName,
@@ -238,7 +240,8 @@ function createSubject(req, res) {
       cleanFacName,
       parseInt(credits || 3),
       description || '',
-      status || 'Active'
+      status || 'Active',
+      activePortalId
     ],
     function (err) {
       if (err) {

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { verifyToken, requireRole } = require('../middleware/authMiddleware');
+const { verifyToken, requireRole, requirePortalOrAdminAccess, checkPortalOwnership } = require('../middleware/authMiddleware');
 const authController = require('../controllers/authController');
 const sessionController = require('../controllers/sessionController');
 const attendanceController = require('../controllers/attendanceController');
@@ -59,7 +59,7 @@ router.post('/location/end-session', verifyToken, locationController.endLiveSess
 
 // --- Class Details & ERP Routes ---
 router.get('/class-details', verifyToken, erpController.getClassDetails);
-router.put('/class-details', verifyToken, requireRole('admin'), erpController.updateClassDetails);
+router.put('/class-details', verifyToken, requirePortalOrAdminAccess, erpController.updateClassDetails);
 
 router.get('/faculties', verifyToken, erpController.getFaculties);
 router.post('/faculties', verifyToken, requireRole('admin'), erpController.createFaculty);
@@ -107,26 +107,26 @@ router.post('/class-portal', verifyToken, requireRole('admin'), erpController.ge
 router.post('/class-portal/generate', verifyToken, requireRole('admin'), erpController.generateClassPortal);
 router.delete('/class-portal/:id', verifyToken, requireRole('admin'), erpController.deleteClassPortal);
 
-// --- Subject ERP Routes ---
+// --- Subject ERP Routes (Class Portal Autonomous CRUD) ---
 router.get('/subjects', verifyToken, erpController.getSubjects);
-router.post('/subjects', verifyToken, requireRole('admin'), erpController.createSubject);
-router.put('/subjects/:id', verifyToken, requireRole('admin'), erpController.updateSubject);
-router.put('/subjects/:id/archive', verifyToken, requireRole('admin'), erpController.toggleArchiveSubject);
-router.delete('/subjects/:id', verifyToken, requireRole('admin'), erpController.deleteSubject);
+router.post('/subjects', verifyToken, requirePortalOrAdminAccess, erpController.createSubject);
+router.put('/subjects/:id', verifyToken, requirePortalOrAdminAccess, erpController.updateSubject);
+router.put('/subjects/:id/archive', verifyToken, requirePortalOrAdminAccess, erpController.toggleArchiveSubject);
+router.delete('/subjects/:id', verifyToken, requirePortalOrAdminAccess, erpController.deleteSubject);
 
-// --- Timetable ERP Routes ---
+// --- Timetable ERP Routes (Class Portal Autonomous CRUD) ---
 router.get('/timetable/student', verifyToken, erpController.getStudentTimetable);
 router.get('/timetable/faculty', verifyToken, erpController.getFacultyTimetable);
 router.get('/timetable', verifyToken, erpController.getTimetables);
-router.post('/timetable', verifyToken, requireRole('admin'), erpController.createTimetable);
-router.put('/timetable/:id', verifyToken, requireRole('admin'), erpController.updateTimetable);
-router.delete('/timetable/:id', verifyToken, requireRole('admin'), erpController.deleteTimetable);
+router.post('/timetable', verifyToken, requirePortalOrAdminAccess, erpController.createTimetable);
+router.put('/timetable/:id', verifyToken, requirePortalOrAdminAccess, erpController.updateTimetable);
+router.delete('/timetable/:id', verifyToken, requirePortalOrAdminAccess, erpController.deleteTimetable);
 
 // Plural Aliases for Timetable Routes
 router.get('/timetables', verifyToken, erpController.getTimetables);
-router.post('/timetables', verifyToken, requireRole('admin'), erpController.createTimetable);
-router.put('/timetables/:id', verifyToken, requireRole('admin'), erpController.updateTimetable);
-router.delete('/timetables/:id', verifyToken, requireRole('admin'), erpController.deleteTimetable);
+router.post('/timetables', verifyToken, requirePortalOrAdminAccess, erpController.createTimetable);
+router.put('/timetables/:id', verifyToken, requirePortalOrAdminAccess, erpController.updateTimetable);
+router.delete('/timetables/:id', verifyToken, requirePortalOrAdminAccess, erpController.deleteTimetable);
 
 // --- Session Routes (Dynamic QR Attendance) ---
 router.get('/sessions/current-slot', verifyToken, sessionController.getCurrentTimetableSlot);
@@ -148,21 +148,21 @@ router.post('/attendance/admin-mark', verifyToken, attendanceController.adminMar
 router.put('/attendance/records/:id', verifyToken, attendanceController.updateAttendanceRecord);
 router.delete('/attendance/records/:id', verifyToken, attendanceController.deleteAttendanceRecord);
 
-// --- Student Management Routes ---
+// --- Student Management Routes (Class Portal Autonomous CRUD) ---
 router.get('/students', verifyToken, studentController.getStudents);
-router.post('/students', verifyToken, requireRole('admin'), studentController.createStudent);
-router.post('/students/bulk-delete', verifyToken, requireRole('admin'), studentController.bulkDeleteStudents);
-router.post('/students/bulk-import', verifyToken, requireRole('admin'), studentController.bulkImportStudents);
-router.post('/students/bulk-reset-passwords', verifyToken, requireRole('admin'), studentController.bulkResetStudentPasswords);
+router.post('/students', verifyToken, requirePortalOrAdminAccess, studentController.createStudent);
+router.post('/students/bulk-delete', verifyToken, requirePortalOrAdminAccess, studentController.bulkDeleteStudents);
+router.post('/students/bulk-import', verifyToken, requirePortalOrAdminAccess, studentController.bulkImportStudents);
+router.post('/students/bulk-reset-passwords', verifyToken, requirePortalOrAdminAccess, studentController.bulkResetStudentPasswords);
 router.get('/students/login-activity', verifyToken, studentController.getLoginActivity);
 router.get('/students/password-audit-logs', verifyToken, studentController.getPasswordAuditLogs);
 router.get('/students/:id/profile-details', verifyToken, studentController.getStudentProfileDetails);
 router.put('/students/:id', verifyToken, studentController.updateStudent);
-router.delete('/students/:id', verifyToken, requireRole('admin'), studentController.deleteStudent);
-router.post('/students/:id/reset-device', verifyToken, requireRole('admin'), studentController.resetStudentDevice);
-router.post('/students/:id/reset-password', verifyToken, requireRole('admin'), studentController.resetStudentPassword);
-router.post('/students/:id/force-password-change', verifyToken, requireRole('admin'), studentController.forceStudentPasswordChange);
-router.put('/students/:id/status', verifyToken, requireRole('admin'), studentController.updateStudentAccountStatus);
+router.delete('/students/:id', verifyToken, requirePortalOrAdminAccess, studentController.deleteStudent);
+router.post('/students/:id/reset-device', verifyToken, requirePortalOrAdminAccess, studentController.resetStudentDevice);
+router.post('/students/:id/reset-password', verifyToken, requirePortalOrAdminAccess, studentController.resetStudentPassword);
+router.post('/students/:id/force-password-change', verifyToken, requirePortalOrAdminAccess, studentController.forceStudentPasswordChange);
+router.put('/students/:id/status', verifyToken, requirePortalOrAdminAccess, studentController.updateStudentAccountStatus);
 
 // --- Database Backup System ---
 const multer = require('multer');
