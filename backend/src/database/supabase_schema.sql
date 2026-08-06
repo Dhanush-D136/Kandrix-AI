@@ -581,3 +581,39 @@ CREATE TABLE IF NOT EXISTS public.semesters (
 ALTER TABLE public.semesters ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow server full access to semesters" ON public.semesters;
 CREATE POLICY "Allow server full access to semesters" ON public.semesters FOR ALL USING (true) WITH CHECK (true);
+
+-- 31. Attendance Live Sessions Table
+CREATE TABLE IF NOT EXISTS public.attendance_live_sessions (
+  id TEXT PRIMARY KEY,
+  class_portal_id TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  latitude DOUBLE PRECISION NOT NULL,
+  longitude DOUBLE PRECISION NOT NULL,
+  radius DOUBLE PRECISION DEFAULT 50.0,
+  started_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  ended_at TIMESTAMPTZ,
+  status TEXT DEFAULT 'active'
+);
+
+ALTER TABLE public.attendance_live_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow server full access to attendance_live_sessions" ON public.attendance_live_sessions;
+CREATE POLICY "Allow server full access to attendance_live_sessions" ON public.attendance_live_sessions FOR ALL USING (true) WITH CHECK (true);
+
+-- 32. Live Student Locations Table
+CREATE TABLE IF NOT EXISTS public.live_student_locations (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  student_name TEXT,
+  roll_number TEXT,
+  latitude DOUBLE PRECISION NOT NULL,
+  longitude DOUBLE PRECISION NOT NULL,
+  distance DOUBLE PRECISION NOT NULL,
+  inside_boundary INTEGER DEFAULT 0,
+  last_seen TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  present_marked INTEGER DEFAULT 0
+);
+
+ALTER TABLE public.live_student_locations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow server full access to live_student_locations" ON public.live_student_locations;
+CREATE POLICY "Allow server full access to live_student_locations" ON public.live_student_locations FOR ALL USING (true) WITH CHECK (true);

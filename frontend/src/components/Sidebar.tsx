@@ -16,7 +16,8 @@ import {
   BookOpen,
   Settings as SettingsIcon,
   LogOut,
-  GraduationCap
+  GraduationCap,
+  Radio
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -45,11 +46,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
   // 2. Class Portal Sidebar Items
   const classPortalNavItems = [
     { id: 'class-portal-dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'live-location-hub', label: 'Live Location', icon: Radio },
     { id: 'students-management', label: 'Students', icon: Users },
     { id: 'faculty-management', label: 'Faculty', icon: UserCheck },
     { id: 'subjects', label: 'Subjects', icon: BookOpen },
     { id: 'timetable', label: 'Timetable', icon: Calendar },
-    { id: 'sessions', label: 'Attendance', icon: QrCode },
+    { id: 'sessions', label: 'Dynamic QR', icon: QrCode },
     { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
@@ -57,6 +59,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
   // 3. Student Portal Sidebar Items
   const studentNavItems = [
     { id: 'student-dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'live-location', label: "I'm Present", icon: Radio },
     { id: 'qr-scanner', label: 'Scan QR', icon: Camera },
     { id: 'history', label: 'Attendance', icon: History },
     { id: 'student-timetable', label: 'Timetable', icon: Calendar },

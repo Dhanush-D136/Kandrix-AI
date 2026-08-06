@@ -20,6 +20,8 @@ import { StudentTimetablePage } from './pages/StudentTimetablePage';
 import { TimetablePage } from './pages/TimetablePage';
 import { StudentManagement } from './pages/StudentManagement';
 import { FacultyManagement } from './pages/FacultyManagement';
+import { LiveLocationView } from './pages/LiveLocationView';
+import { ClassLiveLocationRadar } from './pages/ClassLiveLocationRadar';
 import { AttendanceManagementPage } from './pages/AttendanceManagementPage';
 import { RefreshCw } from 'lucide-react';
 
@@ -104,11 +106,15 @@ const MainLayout: React.FC = () => {
             /* Portal 2: Class Portal */
             <>
               {(activeTab === 'class-portal-dashboard' || activeTab === 'dashboard') && (
-                <SessionHub
-                  initialSubject={sessionParams?.subject}
-                  initialFaculty={sessionParams?.faculty}
-                  initialSubjectCode={sessionParams?.code}
-                  initialPeriod={sessionParams?.period}
+                <ClassLiveLocationRadar
+                  onSwitchToQR={() => setActiveTab('sessions')}
+                  onSwitchToManual={() => setActiveTab('sessions')}
+                />
+              )}
+              {activeTab === 'live-location-hub' && (
+                <ClassLiveLocationRadar
+                  onSwitchToQR={() => setActiveTab('sessions')}
+                  onSwitchToManual={() => setActiveTab('sessions')}
                 />
               )}
               {activeTab === 'students-management' && <StudentManagement />}
@@ -129,10 +135,17 @@ const MainLayout: React.FC = () => {
           ) : (
             /* Portal 3: Student Portal */
             <>
-              {(activeTab === 'student-dashboard' || activeTab === 'dashboard' || activeTab === 'history') && <StudentDashboard />}
+              {(activeTab === 'student-dashboard' || activeTab === 'dashboard') && <StudentDashboard />}
+              {activeTab === 'live-location' && (
+                <LiveLocationView
+                  onSwitchToQR={() => setActiveTab('qr-scanner')}
+                  onSuccessReturn={() => setActiveTab('student-dashboard')}
+                />
+              )}
               {activeTab === 'qr-scanner' && (
                 <QRScannerView onSuccessReturn={() => setActiveTab('student-dashboard')} />
               )}
+              {activeTab === 'history' && <StudentDashboard />}
               {activeTab === 'student-timetable' && <StudentTimetablePage />}
               {(activeTab === 'profile' || activeTab === 'settings') && <ProfilePage />}
             </>

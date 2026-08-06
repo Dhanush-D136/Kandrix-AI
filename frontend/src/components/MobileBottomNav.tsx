@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Camera, History, Calendar, User, QrCode, Users } from 'lucide-react';
+import { LayoutDashboard, Camera, History, Calendar, User, QrCode, Users, Radio } from 'lucide-react';
 
 interface MobileBottomNavProps {
   activeTab: string;
@@ -19,17 +19,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, set
 
   const studentTabs = [
     { id: 'student-dashboard', label: 'Home', icon: LayoutDashboard },
+    { id: 'live-location', label: "I'm Present", icon: Radio },
     { id: 'qr-scanner', label: 'Scan QR', icon: Camera },
     { id: 'history', label: 'Attendance', icon: History },
-    { id: 'student-timetable', label: 'Timetable', icon: Calendar },
     { id: 'profile', label: 'Profile', icon: User },
   ];
 
   const classPortalTabs = [
     { id: 'class-portal-dashboard', label: 'Home', icon: LayoutDashboard },
+    { id: 'live-location-hub', label: 'Live GPS', icon: Radio },
     { id: 'sessions', label: 'QR Live', icon: QrCode },
     { id: 'students-management', label: 'Students', icon: Users },
-    { id: 'timetable', label: 'Timetable', icon: Calendar },
   ];
 
   const tabs = isStudent ? studentTabs : classPortalTabs;

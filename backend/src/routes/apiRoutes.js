@@ -8,6 +8,7 @@ const attendanceController = require('../controllers/attendanceController');
 const studentController = require('../controllers/studentController');
 const erpController = require('../controllers/erpController');
 const facultyController = require('../controllers/facultyController');
+const locationController = require('../controllers/locationController');
 
 // --- Auth Routes ---
 router.post('/auth/login', authController.login);
@@ -49,6 +50,12 @@ router.get('/admin/faculty-management/activity-logs', facultyController.adminGet
 router.get('/admin/faculties-list', facultyController.adminGetFaculties);
 router.post('/admin/faculties-create', facultyController.adminCreateFaculty);
 router.delete('/admin/faculties-delete/:id', facultyController.adminDeleteFaculty);
+
+// --- Live GPS Location Attendance Routes ---
+router.post('/location/start-session', verifyToken, locationController.startLiveSession);
+router.post('/location/update', verifyToken, locationController.updateStudentLocation);
+router.get('/location/live', verifyToken, locationController.getLiveSessionStatus);
+router.post('/location/end-session', verifyToken, locationController.endLiveSession);
 
 // --- Class Details & ERP Routes ---
 router.get('/class-details', verifyToken, erpController.getClassDetails);
