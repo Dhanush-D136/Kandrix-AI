@@ -151,7 +151,7 @@ export const LiveLocationView: React.FC<LiveLocationViewProps> = ({ onSwitchToQR
         {/* Title */}
         <div className="space-y-1">
           <span className="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-extrabold uppercase tracking-wider">
-            Live GPS Geofence (50m Radius)
+            Live GPS Geofence ({allowedRadius}m Radius)
           </span>
           <h2 className="font-display font-black text-2xl text-[#111827]">
             {status === 'PRESENT' ? '✅ Attendance Verified' : 'Smart Live Location'}

@@ -433,7 +433,7 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({ onSuccessReturn })
             <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 truncate">
               {gpsStatus}
             </p>
-            <p className="text-[10px] text-slate-500 font-mono">Radius: 50m Max</p>
+            <p className="text-[10px] text-slate-500 font-mono">Radius: 500m Max</p>
           </div>
 
           {/* Security Verification Card */}

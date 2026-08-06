@@ -132,7 +132,7 @@ function markAttendance(req, res) {
       distanceMeters = getDistanceFromLatLonInMeters(stLat, stLng, refLat, refLng);
     }
 
-    const maxAllowedRadiusMeters = 100; // Allowed classroom radius (50-100m)
+    const maxAllowedRadiusMeters = parseFloat(session.radius || 500); // Dynamic classroom geofence radius (default 500m)
     if (distanceMeters > maxAllowedRadiusMeters && stLat !== 0) {
       console.warn(`⚠️ [GPS GEOFENCE REJECTED] ${studentName} - Distance: ${distanceMeters}m > Max ${maxAllowedRadiusMeters}m`);
       return res.status(400).json({
