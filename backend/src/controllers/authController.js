@@ -257,12 +257,6 @@ function studentLogin(req, res) {
 
     const studentPortalId = studentUser.portal_id || 'AI3A';
 
-    const token = jwt.sign(
-      { id: studentUser.id, name: studentUser.name, roll_number: studentUser.roll_number, role: 'student', portal_id: studentPortalId, department: studentUser.department },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
     const isFirstLogin = Boolean(studentUser.first_login === 1 || studentUser.is_first_login === 1 || studentUser.must_change_password === 1 || studentUser.password_changed === 0);
 
     // Check device binding if device_fingerprint is provided
@@ -286,7 +280,7 @@ function studentLogin(req, res) {
     );
 
     const token = jwt.sign(
-      { id: studentUser.id, name: studentUser.name, roll_number: studentUser.roll_number, email: studentUser.email, role: 'student', department: studentUser.department, year: studentUser.year, section: studentUser.section },
+      { id: studentUser.id, name: studentUser.name, roll_number: studentUser.roll_number, email: studentUser.email, role: 'student', portal_id: studentPortalId, department: studentUser.department, year: studentUser.year, section: studentUser.section },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
