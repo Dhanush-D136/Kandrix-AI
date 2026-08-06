@@ -20,10 +20,10 @@ function adminLogin(req, res) {
   const isGenericVelOrAdmin = cleanInput === 'vel' || cleanInput === 'admin' || cleanInput === 'super admin' || cleanInput === 'admin@kandrix.ai';
 
   const query = isGenericVelOrAdmin
-    ? `SELECT * FROM users WHERE role = 'admin' ORDER BY CASE WHEN LOWER(email) = 'admin@kandrix.ai' OR id = 'usr-admin-vel' THEN 0 ELSE 1 END LIMIT 1`
-    : `SELECT * FROM users WHERE role = 'admin' AND (LOWER(email) = ? OR LOWER(roll_number) = ? OR LOWER(name) LIKE ?) LIMIT 1`;
+    ? `SELECT * FROM users WHERE (role = 'super_admin' OR role = 'admin' OR LOWER(username) = 'vel') ORDER BY CASE WHEN LOWER(username) = 'vel' OR id = 'usr-admin-vel' THEN 0 ELSE 1 END LIMIT 1`
+    : `SELECT * FROM users WHERE (role = 'super_admin' OR role = 'admin') AND (LOWER(username) = ? OR LOWER(email) = ? OR LOWER(roll_number) = ? OR LOWER(name) LIKE ?) LIMIT 1`;
 
-  const queryParams = isGenericVelOrAdmin ? [] : [cleanInput, cleanInput, `%${cleanInput}%`];
+  const queryParams = isGenericVelOrAdmin ? [] : [cleanInput, cleanInput, cleanInput, `%${cleanInput}%`];
 
   db.get(query, queryParams, async (err, user) => {
     if (err) return res.status(500).json({ error: 'Database error: ' + err.message });
