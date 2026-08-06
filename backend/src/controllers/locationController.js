@@ -19,20 +19,24 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
  */
 function startLiveSession(req, res) {
   const classPortalId = req.user?.id || 'cp-ai3a';
-  const { latitude, longitude, radius = 50, subject = 'Lecture Session' } = req.body;
+  const { latitude, longitude, radius = 500, subject = 'Python Programming' } = req.body;
 
   const latNum = parseFloat(latitude || 13.0827);
   const lngNum = parseFloat(longitude || 80.2707);
 
-  // Close previous active live sessions
-  db.run("UPDATE attendance_live_sessions SET status = 'ended', ended_at = CURRENT_TIMESTAMP WHERE class_portal_id = ? AND status = 'active'", [classPortalId], () => {
-    const sessionId = 'live-sess-' + uuidv4();
+  // Fetch institution default radius from system_settings if available
+  db.get('SELECT geofence_radius_meters FROM system_settings WHERE id = 1', [], (errSet, settings) => {
+    const activeRadius = parseFloat(req.body.radius || (settings && settings.geofence_radius_meters) || 500);
 
-    db.run(
-      `INSERT INTO attendance_live_sessions (id, class_portal_id, subject, latitude, longitude, radius, status, started_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP)`,
-      [sessionId, classPortalId, subject, latNum, lngNum, parseFloat(radius)],
-      (err) => {
+    // Close previous active live sessions
+    db.run("UPDATE attendance_live_sessions SET status = 'ended', ended_at = CURRENT_TIMESTAMP WHERE class_portal_id = ? AND status = 'active'", [classPortalId], () => {
+      const sessionId = 'live-sess-' + uuidv4();
+
+      db.run(
+        `INSERT INTO attendance_live_sessions (id, class_portal_id, subject, latitude, longitude, radius, status, started_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP)`,
+        [sessionId, classPortalId, subject, latNum, lngNum, activeRadius],
+        (err) => {
         if (err) {
           return res.status(500).json({ success: false, message: 'Failed to start live session: ' + err.message });
         }
@@ -109,7 +113,7 @@ function updateStudentLocation(req, res) {
 function processGPSCheck(session, studentId, studentName, rollNumber, stLat, stLng, req, res) {
   const refLat = parseFloat(session.latitude || session.admin_lat || 13.0827);
   const refLng = parseFloat(session.longitude || session.admin_lng || 80.2707);
-  const allowedRadius = parseFloat(session.radius || 50);
+  const allowedRadius = parseFloat(session.radius || 500);
 
   const distanceMeters = getDistanceFromLatLonInMeters(stLat, stLng, refLat, refLng);
   const insideBoundary = distanceMeters <= allowedRadius ? 1 : 0;

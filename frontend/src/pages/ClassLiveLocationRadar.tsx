@@ -44,8 +44,8 @@ export const ClassLiveLocationRadar: React.FC<ClassLiveLocationRadarProps> = ({ 
           const res = await api.post('/location/start-session', {
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
-            radius: 50,
-            subject: 'Current Lecture Session'
+            radius: 500,
+            subject: 'Python Programming'
           });
           setActiveSession(res.data.session);
           setSessionRunning(true);
@@ -110,7 +110,7 @@ export const ClassLiveLocationRadar: React.FC<ClassLiveLocationRadarProps> = ({ 
               </span>
             </div>
             <h2 className="font-display font-extrabold text-xl text-[#111827]">
-              Smart Live Location Attendance Hub (50m Radius)
+              Smart Live Location Attendance Hub (500m Radius)
             </h2>
           </div>
         </div>
