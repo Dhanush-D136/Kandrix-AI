@@ -86,10 +86,15 @@ function getCurrentTimetableSlot(req, res) {
   let query = "SELECT * FROM timetables WHERE day = ? AND (status = 'ACTIVE' OR status IS NULL OR status = '')";
   const params = [targetDay];
 
+  if (req.user && req.user.role === 'class_portal') {
+    const activePortalId = req.user.portal_id || req.user.username;
+    query += " AND portal_id = ?";
+    params.push(activePortalId);
+  }
+
   if (department && department !== 'All') {
-    const deptParam = department.includes('AI') ? '%AI%' : `%${department}%`;
-    query += " AND (department = ? OR department LIKE ? OR department IS NULL)";
-    params.push(department, deptParam);
+    query += " AND department = ?";
+    params.push(department);
   }
   if (year && year !== 'All') {
     const yrNum = parseInt(year, 10) || 3;

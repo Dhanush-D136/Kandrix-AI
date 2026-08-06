@@ -10,7 +10,7 @@ function getStudents(req, res) {
   let query = `
     SELECT u.id, u.name, u.roll_number, u.vh_number, u.email, u.department, u.year, u.section, u.phone, u.profile_photo, 
            u.device_fingerprint, u.must_change_password, u.first_login, u.password_changed, u.password_changed_at,
-           u.dob, u.gender, u.blood_group, u.address, u.parent_name, u.parent_phone, u.bio, u.status, u.admission_year, u.username, u.created_at,
+           u.dob, u.gender, u.blood_group, u.address, u.parent_name, u.parent_phone, u.bio, u.status, u.admission_year, u.username, u.portal_id, u.created_at,
            COUNT(DISTINCT ar.id) as attended_count,
            (SELECT COUNT(*) FROM attendance_sessions s WHERE s.department = u.department AND s.year = u.year AND s.section = u.section) as total_sessions
     FROM users u
@@ -20,14 +20,11 @@ function getStudents(req, res) {
 
   const params = [];
 
-  // Data Isolation: If Class Portal user, automatically scope to their portal department and section
-  if (req.user && (req.user.role === 'class_portal' || req.user.role === 'faculty')) {
-    const portalName = (req.user.name || req.user.username || req.user.portal_id || '').toUpperCase();
-    if (portalName.includes('CSE')) {
-      query += ` AND (u.department LIKE '%CSE%' OR u.department LIKE '%Computer Science%')`;
-    } else if (portalName.includes('AI') || portalName.includes('DS')) {
-      query += ` AND (u.department LIKE '%AI%' OR u.department LIKE '%DS%' OR u.department LIKE '%Data%')`;
-    }
+  // Data Isolation: If Class Portal user, strictly scope to their portal_id container!
+  if (req.user && req.user.role === 'class_portal') {
+    const activePortalId = req.user.portal_id || req.user.username;
+    query += ` AND u.portal_id = ?`;
+    params.push(activePortalId);
   }
 
   if (search && search.trim() !== '') {
@@ -37,13 +34,8 @@ function getStudents(req, res) {
   }
 
   if (department && department !== 'All') {
-    const dClean = department.trim().toLowerCase();
-    if (dClean.includes('ai') || dClean.includes('ds') || dClean.includes('data')) {
-      query += ` AND (u.department LIKE '%AI%' OR u.department LIKE '%DS%' OR u.department LIKE '%Data%')`;
-    } else {
-      query += ` AND u.department = ?`;
-      params.push(department);
-    }
+    query += ` AND u.department = ?`;
+    params.push(department);
   }
 
   if (year) {
@@ -66,7 +58,7 @@ function getStudents(req, res) {
   db.all(query, params, (err, rows) => {
     if (err) return res.status(500).json({ error: 'Database query error: ' + err.message });
 
-    const formattedStudents = rows.map((st) => {
+    const formattedStudents = (rows || []).map((st) => {
       const total = st.total_sessions || 0;
       const attended = st.attended_count || 0;
       let rate = 0;
@@ -84,8 +76,16 @@ function getStudents(req, res) {
       };
     });
 
-    // Compute Summary Stats for Top Cards
-    db.all(`SELECT id, status, must_change_password, first_login, password_changed FROM users WHERE role = 'student'`, [], (err2, allSts) => {
+    // Compute Summary Stats for Top Cards scoped to active portal container
+    let statsQuery = `SELECT id, status, must_change_password, first_login, password_changed FROM users WHERE role = 'student'`;
+    let statsParams = [];
+    if (req.user && req.user.role === 'class_portal') {
+      const activePortalId = req.user.portal_id || req.user.username;
+      statsQuery += ` AND portal_id = ?`;
+      statsParams.push(activePortalId);
+    }
+
+    db.all(statsQuery, statsParams, (err2, allSts) => {
       const totalStudents = allSts ? allSts.length : formattedStudents.length;
       let activeStudents = 0;
       let inactiveStudents = 0;
@@ -98,6 +98,26 @@ function getStudents(req, res) {
         else inactiveStudents++;
 
         const isDef = Boolean(st.must_change_password === 1 || st.first_login === 1 || st.password_changed === 0);
+        if (isDef) defaultPasswordCount++;
+        else customPasswordCount++;
+      });
+
+      // Count logged in today & active sessions
+      const todayStr = new Date().toISOString().split('T')[0];
+      db.get(
+        `SELECT COUNT(DISTINCT student_id) as count FROM login_logs WHERE DATE(login_time) = DATE('now') OR login_time LIKE ?`,
+        [`${todayStr}%`],
+        (err3, loggedInRow) => {
+          db.get(`SELECT COUNT(*) as count FROM attendance_sessions WHERE status = 'active'`, [], (err4, activeSessionsRow) => {
+            res.json({
+              students: formattedStudents,
+              total: formattedStudents.length,
+              summaryStats: {
+                totalStudents,
+                activeStudents,
+                inactiveStudents,
+                defaultPasswordCount,
+                customPasswordCount,
         if (isDef) defaultPasswordCount++;
         else customPasswordCount++;
       });
@@ -155,11 +175,12 @@ async function createStudent(req, res) {
   const photo = profile_photo || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150`;
   const studentStatus = status || 'Active';
   const uname = username || roll_number.trim();
+  const portalId = (req.user && req.user.portal_id) ? req.user.portal_id : (req.body.portal_id || 'AI3A');
 
   db.run(
-    `INSERT INTO users (id, name, roll_number, vh_number, email, role, department, year, section, phone, profile_photo, dob, gender, blood_group, address, parent_name, parent_phone, bio, status, admission_year, username, password_hash, must_change_password, is_first_login, first_login, password_changed)
-     VALUES (?, ?, ?, ?, ?, 'student', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 0)`,
-    [id, name.trim(), roll_number.trim(), vh, autoEmail, department, year, section, phone || '', photo, dob || null, gender || null, blood_group || null, address || null, parent_name || null, parent_phone || null, bio || null, studentStatus, admission_year || new Date().getFullYear(), uname, defaultPasswordHash],
+    `INSERT INTO users (id, name, roll_number, vh_number, email, role, department, year, section, phone, profile_photo, dob, gender, blood_group, address, parent_name, parent_phone, bio, status, admission_year, username, password_hash, must_change_password, is_first_login, first_login, password_changed, portal_id)
+     VALUES (?, ?, ?, ?, ?, 'student', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 0, ?)`,
+    [id, name.trim(), roll_number.trim(), vh, autoEmail, department, year, section, phone || '', photo, dob || null, gender || null, blood_group || null, address || null, parent_name || null, parent_phone || null, bio || null, studentStatus, admission_year || new Date().getFullYear(), uname, defaultPasswordHash, portalId],
     function (err) {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed')) {
@@ -183,7 +204,7 @@ async function createStudent(req, res) {
 
       res.status(201).json({
         message: `Student account created successfully with official email "${autoEmail}" and default password "1234".`,
-        student: { id, name, roll_number, vh_number: vh, email: autoEmail, department, year, section, phone, profile_photo: photo, status: studentStatus }
+        student: { id, name, roll_number, vh_number: vh, email: autoEmail, department, year, section, phone, profile_photo: photo, status: studentStatus, portal_id: portalId }
       });
     }
   );

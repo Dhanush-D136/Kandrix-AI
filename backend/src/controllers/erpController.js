@@ -81,19 +81,20 @@ function getSubjects(req, res) {
   let query = 'SELECT * FROM subjects WHERE (is_archived = 0 OR is_archived IS NULL)';
   const params = [];
 
+  if (req.user && req.user.role === 'class_portal') {
+    const activePortalId = req.user.portal_id || req.user.username;
+    query += ' AND portal_id = ?';
+    params.push(activePortalId);
+  }
+
   if (faculty_name) {
     query += ' AND LOWER(faculty_name) = LOWER(?)';
     params.push(faculty_name.trim());
   }
 
   if (department && department !== 'All') {
-    const dClean = department.trim().toLowerCase();
-    if (dClean.includes('ai') || dClean.includes('ds') || dClean.includes('data')) {
-      query += ` AND (department LIKE '%AI%' OR department LIKE '%DS%' OR department LIKE '%Data%')`;
-    } else {
-      query += ` AND department = ?`;
-      params.push(department);
-    }
+    query += ` AND department = ?`;
+    params.push(department);
   }
 
   if (semester) {
@@ -376,6 +377,12 @@ function getTimetables(req, res) {
   let query = 'SELECT * FROM timetables WHERE 1=1';
   const params = [];
 
+  if (req.user && req.user.role === 'class_portal') {
+    const activePortalId = req.user.portal_id || req.user.username;
+    query += ' AND portal_id = ?';
+    params.push(activePortalId);
+  }
+
   if (department && department !== 'All' && department !== 'all') {
     const deptParam = department.includes('AI') ? '%AI%' : `%${department}%`;
     query += ' AND (department = ? OR department LIKE ? OR department IS NULL)';
@@ -438,46 +445,28 @@ function getTimetables(req, res) {
 // Student Timetable API: GET /api/timetable/student
 function getStudentTimetable(req, res) {
   const studentId = req.query.student_id || req.user?.id;
-  const rawDept = req.query.department || req.user?.department || 'AI & DS';
-  const rawYr = req.query.year || req.user?.year || 3;
-  const rawSec = req.query.section || req.user?.section || 'A';
-  const rawSem = req.query.semester || req.user?.semester || 5;
+  const activePortalId = req.user?.portal_id || req.query.portal_id;
 
-  const yr = parseYearNumber(rawYr);
-  const sec = (typeof rawSec === 'string' && rawSec.length === 1) ? rawSec : 'A';
-  const sem = parseYearNumber(rawSem) || 5;
-
-  const sql = `
+  let sql = `
     SELECT * FROM timetables 
     WHERE (status = 'ACTIVE' OR status IS NULL OR status = '')
-    ORDER BY CASE day WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6 WHEN 'Sunday' THEN 7 ELSE 8 END, CAST(period_number AS INTEGER) ASC, start_time ASC
   `;
+  const params = [];
 
-  db.all(sql, [], (err, timetables) => {
+  if (activePortalId) {
+    sql += ` AND portal_id = ?`;
+    params.push(activePortalId);
+  }
+
+  sql += ` ORDER BY CASE day WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6 WHEN 'Sunday' THEN 7 ELSE 8 END, CAST(period_number AS INTEGER) ASC, start_time ASC`;
+
+  db.all(sql, params, (err, timetables) => {
     if (err) return res.status(500).json({ error: 'Database error fetching student timetable' });
-
-    const allList = timetables || [];
-    const deptClean = rawDept.toLowerCase();
-
-    let filtered = allList.filter((t) => {
-      const d = (t.department || '').toLowerCase();
-      const matchDept = !d || d.includes('ai') || d.includes(deptClean) || deptClean.includes(d);
-      const matchYr = !t.year || t.year == yr;
-      const matchSec = !t.section || t.section === sec;
-      return matchDept && matchYr && matchSec;
-    });
-
-    if (filtered.length === 0) {
-      filtered = allList;
-    }
 
     res.json({
       student_id: studentId,
-      department: rawDept,
-      year: yr,
-      section: sec,
-      semester: sem,
-      timetables: filtered
+      portal_id: activePortalId,
+      timetables: timetables || []
     });
   });
 }
@@ -984,11 +973,11 @@ function generateClassPortal(req, res) {
     ];
 
     defaultSubjects.forEach((sub) => {
-      const subId = `sub-${dispName.toLowerCase()}-${sub.code.toLowerCase()}`;
+      const subId = `sub-${portId.toLowerCase()}-${sub.code.toLowerCase()}`;
       db.run(
-        `INSERT OR IGNORE INTO subjects (id, name, code, type, department, year, semester, section, faculty_name, credits, status, is_archived)
-         VALUES (?, ?, ?, ?, ?, 3, 5, 'A', ?, ?, 'Active', 0)`,
-        [subId, sub.name, sub.code, sub.type, pName, advisor || 'Staff', sub.credits]
+        `INSERT OR IGNORE INTO subjects (id, name, code, type, department, year, semester, section, faculty_name, credits, status, is_archived, portal_id)
+         VALUES (?, ?, ?, ?, ?, 3, 5, 'A', ?, ?, 'Active', 0, ?)`,
+        [subId, sub.name, sub.code, sub.type, pName, advisor || 'Staff', sub.credits, portId]
       );
     });
 
@@ -1002,11 +991,11 @@ function generateClassPortal(req, res) {
     ];
 
     defaultTtSlots.forEach((slot) => {
-      const ttId = `tt-${dispName.toLowerCase()}-${slot.day.toLowerCase()}-p${slot.period}`;
+      const ttId = `tt-${portId.toLowerCase()}-${slot.day.toLowerCase()}-p${slot.period}`;
       db.run(
-        `INSERT OR IGNORE INTO timetables (id, department, year, section, semester, day, period_number, subject_name, faculty_name, start_time, end_time, room_number)
-         VALUES (?, ?, 3, 'A', 5, ?, ?, ?, ?, ?, ?, ?)`,
-        [ttId, pName, slot.day, slot.period, slot.name, advisor || 'Staff', slot.start, slot.end, room || '306']
+        `INSERT OR IGNORE INTO timetables (id, department, year, section, semester, day, period_number, subject_name, faculty_name, start_time, end_time, room_number, portal_id)
+         VALUES (?, ?, 3, 'A', 5, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [ttId, pName, slot.day, slot.period, slot.name, advisor || 'Staff', slot.start, slot.end, room || '306', portId]
       );
     });
 

@@ -115,6 +115,18 @@ function updateStudentLocation(req, res) {
 }
 
 function processGPSCheck(session, studentId, studentName, rollNumber, stLat, stLng, req, res) {
+  const studentPortalId = req.user?.portal_id;
+  const sessionPortalId = session.portal_id || session.class_portal_id;
+
+  if (sessionPortalId && studentPortalId && studentPortalId !== sessionPortalId) {
+    console.warn(`⚠️ [GPS CROSS PORTAL REJECTED] Student (${studentName}, ${studentPortalId}) tried to mark attendance in Session Portal (${sessionPortalId})`);
+    return res.status(403).json({
+      success: false,
+      error_code: 'STUDENT_NOT_ASSIGNED_TO_THIS_PORTAL',
+      message: '❌ Rejected: Student belongs to another portal.'
+    });
+  }
+
   const refLat = parseFloat(session.latitude || session.admin_lat || 13.0827);
   const refLng = parseFloat(session.longitude || session.admin_lng || 80.2707);
   const allowedRadius = parseFloat(session.radius || 500);
@@ -123,6 +135,7 @@ function processGPSCheck(session, studentId, studentName, rollNumber, stLat, stL
   const insideBoundary = distanceMeters <= allowedRadius ? 1 : 0;
 
   const locId = `loc-${studentId}-${session.id}`;
+  const portalIdToStore = sessionPortalId || studentPortalId || 'AI3A';
 
   db.run(
     `INSERT INTO live_student_locations (id, student_id, session_id, student_name, roll_number, latitude, longitude, distance, inside_boundary, last_seen, present_marked)
@@ -141,11 +154,11 @@ function processGPSCheck(session, studentId, studentName, rollNumber, stLat, stL
             const recordId = uuidv4();
             const attTime = new Date().toISOString();
             db.run(
-              `INSERT INTO attendance_records (id, student_id, session_id, attendance_code, attendance_time, student_lat, student_lng, distance_meters, status, notes)
-               VALUES (?, ?, ?, 'LIVE_GPS_AUTO', ?, ?, ?, ?, 'present', ?)`,
-              [recordId, studentId, session.id, attTime, stLat, stLng, distanceMeters, `Auto-Marked via 1-Tap Live GPS (${distanceMeters}m)`],
+              `INSERT INTO attendance_records (id, portal_id, student_id, session_id, attendance_code, attendance_time, student_lat, student_lng, distance_meters, status, notes)
+               VALUES (?, ?, ?, ?, 'LIVE_GPS_AUTO', ?, ?, ?, ?, 'present', ?)`,
+              [recordId, portalIdToStore, studentId, session.id, attTime, stLat, stLng, distanceMeters, `Auto-Marked via 1-Tap Live GPS (${distanceMeters}m)`],
               () => {
-                console.log(`✅ [1-TAP LIVE GPS AUTO-PRESENT] Student: ${studentName}, Distance: ${distanceMeters}m`);
+                console.log(`✅ [1-TAP LIVE GPS AUTO-PRESENT] Student: ${studentName}, Distance: ${distanceMeters}m, Portal: ${portalIdToStore}`);
               }
             );
           }

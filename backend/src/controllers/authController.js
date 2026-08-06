@@ -109,32 +109,35 @@ function portalLogin(req, res) {
   }
 
   const cleanInput = inputVal.toLowerCase();
+  const rawUpper = inputVal.toUpperCase();
 
   db.get(
-    "SELECT * FROM class_portals WHERE LOWER(username) = ? OR LOWER(portal_id) = ? OR LOWER(display_name) = ?",
-    [cleanInput, cleanInput, cleanInput],
+    "SELECT * FROM class_portals WHERE LOWER(username) = ? OR LOWER(portal_id) = ? OR LOWER(display_name) = ? OR LOWER(portal_name) = ?",
+    [cleanInput, cleanInput, cleanInput, cleanInput],
     async (err, portal) => {
       let cp = portal;
 
-      // Seed default AI3A Class Portal if DB empty
-      if (!cp && (cleanInput === 'ai3a' || cleanInput.includes('ai3a') || cleanInput.includes('portal'))) {
+      // Dynamically auto-create portal container if missing (e.g. AI3C, AI3A, CSE2A)
+      if (!cp && (cleanInput.includes('ai3') || cleanInput.includes('cse') || cleanInput.includes('it') || cleanInput.includes('portal'))) {
         const defaultHash = bcrypt.hashSync('1234', 10);
-        const cpId = 'cp-ai3a';
+        const portalCode = rawUpper;
+        const cpId = `cp-${cleanInput}`;
         db.run(
-          `INSERT OR REPLACE INTO class_portals (id, portal_id, display_name, username, password_hash, department, course, batch, semester, section, advisor, room, max_students)
-           VALUES (?, 'AI3A', 'AI & DS III A', 'AI3A', ?, 'AI & DS', 'B.Tech', '2024-2028', 5, 'A', 'Mrs Vasantha Priya', 'F305', 61)`,
-          [cpId, defaultHash]
+          `INSERT OR REPLACE INTO class_portals (id, portal_id, portal_name, display_name, username, password_hash, department, course, batch, semester, section, advisor, room, max_students)
+           VALUES (?, ?, ?, ?, ?, ?, 'AI & DS', 'B.Tech', '2024-2028', 5, 'C', 'Faculty Advisor', 'F307', 60)`,
+          [cpId, portalCode, portalCode, `${portalCode} Portal`, portalCode, defaultHash]
         );
         cp = {
           id: cpId,
-          portal_id: 'AI3A',
-          display_name: 'AI & DS III A',
-          username: 'AI3A',
+          portal_id: portalCode,
+          portal_name: portalCode,
+          display_name: `${portalCode} Portal`,
+          username: portalCode,
           password_hash: defaultHash,
           department: 'AI & DS',
-          advisor: 'Mrs Vasantha Priya',
-          room: 'F305',
-          max_students: 61
+          advisor: 'Faculty Advisor',
+          room: 'F307',
+          max_students: 60
         };
       }
 
@@ -156,8 +159,10 @@ function portalLogin(req, res) {
         return res.status(401).json({ error: 'Invalid Credentials' });
       }
 
+      const pId = cp.portal_id || cp.username || rawUpper;
+
       const token = jwt.sign(
-        { id: cp.id, name: cp.display_name, portal_id: cp.portal_id, username: cp.username, role: 'class_portal', department: cp.department },
+        { id: cp.id, name: cp.display_name || pId, portal_id: pId, username: cp.username, role: 'class_portal', department: cp.department },
         JWT_SECRET,
         { expiresIn: '24h' }
       );
@@ -167,15 +172,15 @@ function portalLogin(req, res) {
         token,
         user: {
           id: cp.id,
-          name: cp.display_name || cp.portal_name || 'AI & DS III A',
-          display_name: cp.display_name || 'AI3A',
-          portal_id: cp.portal_id || 'AI3A',
-          username: cp.username || 'AI3A',
+          name: cp.display_name || cp.portal_name || pId,
+          display_name: cp.display_name || pId,
+          portal_id: pId,
+          username: cp.username || pId,
           role: 'class_portal',
           department: cp.department || 'AI & DS',
-          advisor: cp.advisor || 'Mrs Vasantha Priya',
-          room: cp.room || 'F305',
-          max_students: cp.max_students || 61
+          advisor: cp.advisor || 'Faculty Advisor',
+          room: cp.room || 'F307',
+          max_students: cp.max_students || 60
         }
       });
     }
@@ -212,8 +217,8 @@ function studentLogin(req, res) {
       const studentId = `usr-student-${cleanInput}`;
       const rollNo = cleanInput.toUpperCase();
       db.run(
-        `INSERT OR REPLACE INTO users (id, name, roll_number, vh_number, email, role, password_hash, department, year, section, status, first_login, is_first_login, must_change_password, password_changed)
-         VALUES (?, 'Dhanush Kumar R', ?, 'VH202401', 'dhanush@veltech.edu.in', 'student', ?, 'AI & DS', 3, 'A', 'Active', 0, 0, 0, 1)`,
+        `INSERT OR REPLACE INTO users (id, name, roll_number, vh_number, email, role, password_hash, department, year, section, status, first_login, is_first_login, must_change_password, password_changed, portal_id)
+         VALUES (?, 'Dhanush Kumar R', ?, 'VH202401', 'dhanush@veltech.edu.in', 'student', ?, 'AI & DS', 3, 'A', 'Active', 0, 0, 0, 1, 'AI3A')`,
         [studentId, rollNo, defaultHash]
       );
       studentUser = {
@@ -231,7 +236,8 @@ function studentLogin(req, res) {
         first_login: 0,
         is_first_login: 0,
         must_change_password: 0,
-        password_changed: 1
+        password_changed: 1,
+        portal_id: 'AI3A'
       };
     }
 
@@ -248,6 +254,14 @@ function studentLogin(req, res) {
     }
 
     if (!isValid) return res.status(401).json({ error: 'Invalid Credentials' });
+
+    const studentPortalId = studentUser.portal_id || 'AI3A';
+
+    const token = jwt.sign(
+      { id: studentUser.id, name: studentUser.name, roll_number: studentUser.roll_number, role: 'student', portal_id: studentPortalId, department: studentUser.department },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
 
     const isFirstLogin = Boolean(studentUser.first_login === 1 || studentUser.is_first_login === 1 || studentUser.must_change_password === 1 || studentUser.password_changed === 0);
 

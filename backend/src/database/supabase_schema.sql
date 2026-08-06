@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   email TEXT UNIQUE NOT NULL,
   role TEXT NOT NULL,
   department TEXT,
+  portal_id TEXT,
   year INTEGER,
   section TEXT,
   phone TEXT,
@@ -38,11 +39,13 @@ CREATE TABLE IF NOT EXISTS public.users (
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS portal_id TEXT;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
 CREATE INDEX IF NOT EXISTS idx_users_roll ON public.users(roll_number);
 CREATE INDEX IF NOT EXISTS idx_users_role ON public.users(role);
+CREATE INDEX IF NOT EXISTS idx_users_portal_id ON public.users(portal_id);
 
 -- 2. Attendance Tokens Table (100 Predefined Tokens Pool)
 CREATE TABLE IF NOT EXISTS public.attendance_tokens (

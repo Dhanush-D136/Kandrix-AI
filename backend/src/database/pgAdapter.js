@@ -114,6 +114,23 @@ async function initSupabasePostgres() {
     console.log('✅ Connected successfully to Supabase PostgreSQL cloud database!');
     console.log('====================================================');
 
+    // Execute alter table column migrations on Supabase PostgreSQL
+    try {
+      await client.query(`
+        ALTER TABLE public.users ADD COLUMN IF NOT EXISTS portal_id TEXT;
+        ALTER TABLE public.faculty ADD COLUMN IF NOT EXISTS portal_id TEXT;
+        ALTER TABLE public.subjects ADD COLUMN IF NOT EXISTS portal_id TEXT;
+        ALTER TABLE public.timetables ADD COLUMN IF NOT EXISTS portal_id TEXT;
+        ALTER TABLE public.attendance_sessions ADD COLUMN IF NOT EXISTS portal_id TEXT;
+        ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS portal_id TEXT;
+        ALTER TABLE public.class_portals ADD COLUMN IF NOT EXISTS portal_id TEXT;
+        ALTER TABLE public.class_portals ADD COLUMN IF NOT EXISTS department_id TEXT;
+      `);
+      console.log('✅ Supabase PostgreSQL portal_id schema columns verified.');
+    } catch (e) {
+      console.warn('⚠️ Supabase schema column alter warning:', e.message);
+    }
+
     // Read and run schema migrations
     const schemaSqlPath = path.join(__dirname, 'supabase_schema.sql');
     if (fs.existsSync(schemaSqlPath)) {
@@ -150,10 +167,11 @@ async function seedSupabaseDatabase() {
       [adminHash]
     );
 
-    // 2. Seed Class Portals (AI3A, AI3B, CSE3A / 1234)
+    // 2. Seed Class Portals (AI3A, AI3B, AI3C, CSE3A / 1234)
     const portals = [
       { id: 'cp-ai3a', portal_id: 'AI3A', name: 'AI & DS III A', username: 'AI3A', dept: 'AI & DS', advisor: 'Mrs Vasantha Priya', room: 'F305', max: 61 },
       { id: 'cp-ai3b', portal_id: 'AI3B', name: 'AI & DS III B', username: 'AI3B', dept: 'AI & DS', advisor: 'Dr Rajesh Kumar', room: 'F306', max: 60 },
+      { id: 'cp-ai3c', portal_id: 'AI3C', name: 'AI & DS III C', username: 'AI3C', dept: 'AI & DS', advisor: 'Mrs Krithiga', room: 'F307', max: 60 },
       { id: 'cp-cse3a', portal_id: 'CSE3A', name: 'CSE III A', username: 'CSE3A', dept: 'Computer Science', advisor: 'Prof Senthil', room: 'C201', max: 65 }
     ];
 
@@ -166,26 +184,26 @@ async function seedSupabaseDatabase() {
       );
 
       await queryPg(
-        `INSERT INTO users (id, name, roll_number, email, username, role, password_hash, department, status)
-         VALUES ($1, $2, $3, $4, $5, 'class_portal', $6, $7, 'Active')
-         ON CONFLICT (id) DO UPDATE SET password_hash = $6, username = $5`,
-        [`usr-${p.id}`, p.name, p.portal_id, `${p.username.toLowerCase()}@kandrix.ai`, p.username, defaultPassHash, p.dept]
+        `INSERT INTO users (id, name, roll_number, email, username, role, password_hash, department, status, portal_id)
+         VALUES ($1, $2, $3, $4, $5, 'class_portal', $6, $7, 'Active', $8)
+         ON CONFLICT (id) DO UPDATE SET password_hash = $6, username = $5, portal_id = $8`,
+        [`usr-${p.id}`, p.name, p.portal_id, `${p.username.toLowerCase()}@kandrix.ai`, p.username, defaultPassHash, p.dept, p.portal_id]
       );
     }
 
-    // 3. Seed Students (21104001, 21AI001, 21AI002 / 1234)
+    // 3. Seed Students (assigned ONLY to AI3A)
     const students = [
-      { id: 'usr-student-21104001', name: 'Dhanush Kumar R', roll: '21104001', email: 'dhanush@veltech.edu.in', dept: 'AI & DS', year: 3, sec: 'A' },
-      { id: 'usr-student-21ai001', name: 'Aarav Sharma', roll: '21AI001', email: 'aarav@veltech.edu.in', dept: 'AI & DS', year: 3, sec: 'A' },
-      { id: 'usr-student-21ai002', name: 'Ananya Verma', roll: '21AI002', email: 'ananya@veltech.edu.in', dept: 'AI & DS', year: 3, sec: 'A' }
+      { id: 'usr-student-21104001', name: 'Dhanush Kumar R', roll: '21104001', email: 'dhanush@veltech.edu.in', dept: 'AI & DS', year: 3, sec: 'A', portal_id: 'AI3A' },
+      { id: 'usr-student-21ai001', name: 'Aarav Sharma', roll: '21AI001', email: 'aarav@veltech.edu.in', dept: 'AI & DS', year: 3, sec: 'A', portal_id: 'AI3A' },
+      { id: 'usr-student-21ai002', name: 'Ananya Verma', roll: '21AI002', email: 'ananya@veltech.edu.in', dept: 'AI & DS', year: 3, sec: 'A', portal_id: 'AI3A' }
     ];
 
     for (const st of students) {
       await queryPg(
-        `INSERT INTO users (id, name, roll_number, email, username, role, password_hash, department, year, section, status, first_login, is_first_login, must_change_password, password_changed)
-         VALUES ($1, $2, $3, $4, $3, 'student', $5, $6, $7, $8, 'Active', 0, 0, 0, 1)
-         ON CONFLICT (id) DO UPDATE SET password_hash = $5, username = $3`,
-        [st.id, st.name, st.roll, st.email, defaultPassHash, st.dept, st.year, st.sec]
+        `INSERT INTO users (id, name, roll_number, email, username, role, password_hash, department, year, section, status, first_login, is_first_login, must_change_password, password_changed, portal_id)
+         VALUES ($1, $2, $3, $4, $3, 'student', $5, $6, $7, $8, 'Active', 0, 0, 0, 1, $9)
+         ON CONFLICT (id) DO UPDATE SET password_hash = $5, username = $3, portal_id = $9`,
+        [st.id, st.name, st.roll, st.email, defaultPassHash, st.dept, st.year, st.sec, st.portal_id]
       );
     }
 
@@ -193,55 +211,57 @@ async function seedSupabaseDatabase() {
     await queryPg(
       `INSERT INTO departments (id, name, code, hod_name, description)
        VALUES ('dept-aids', 'Artificial Intelligence & Data Science', 'AI & DS', 'Dr K. Arumugam', 'AI & Data Science Department'),
-              ('dept-cse', 'Computer Science & Engineering', 'CSE', 'Dr M. Sundar', 'Computer Science Department')
+              ('dept-cse', 'Computer Science & Engineering', 'CSE', 'Dr M. Sundar', 'Computer Science Department'),
+              ('dept-it', 'Information Technology', 'IT', 'Dr R. Senthil', 'IT Department')
        ON CONFLICT (id) DO NOTHING`
     );
 
     // 5. Seed Faculty
     await queryPg(
-      `INSERT INTO faculty (id, faculty_code, name, email, department, designation, qualification, password_hash, status)
-       VALUES ('fac-001', 'FAC001', 'Mrs Vasantha Priya', 'vasanthapriya@veltech.edu.in', 'AI & DS', 'Assistant Professor', 'M.Tech', $1, 'Active'),
-              ('fac-002', 'FAC002', 'Dr Rajesh Kumar', 'rajeshkumar@veltech.edu.in', 'AI & DS', 'Associate Professor', 'Ph.D', $1, 'Active')
+      `INSERT INTO faculty (id, faculty_code, name, email, department, designation, qualification, password_hash, status, portal_id)
+       VALUES ('fac-001', 'FAC001', 'Mrs Vasantha Priya', 'vasanthapriya@veltech.edu.in', 'AI & DS', 'Assistant Professor', 'M.Tech', $1, 'Active', 'AI3A'),
+              ('fac-002', 'FAC002', 'Dr Rajesh Kumar', 'rajeshkumar@veltech.edu.in', 'AI & DS', 'Associate Professor', 'Ph.D', $1, 'Active', 'AI3A')
        ON CONFLICT (id) DO NOTHING`,
       [defaultPassHash]
     );
 
-    // 6. Seed Subjects
+    // 6. Seed Subjects for AI3A
     const subjects = [
-      { id: 'sub-cs51t', name: 'Programming Language for AI', code: 'CS51T', type: 'Theory', dept: 'AI & DS', yr: 3, sem: 5, sec: 'A', fac: 'Mrs Vasantha Priya', cr: 3 },
-      { id: 'sub-cs55t', name: 'Knowledge Engineering', code: 'CS55T', type: 'Theory', dept: 'AI & DS', yr: 3, sem: 5, sec: 'A', fac: 'Dr Rajesh Kumar', cr: 3 },
-      { id: 'sub-cs52t', name: 'Data Analytics', code: 'CS52T', type: 'Theory', dept: 'AI & DS', yr: 3, sem: 5, sec: 'A', fac: 'Mrs Vasantha Priya', cr: 3 },
-      { id: 'sub-cs53it', name: 'Web Technology', code: 'CS53IT', type: 'Theory', dept: 'AI & DS', yr: 3, sem: 5, sec: 'A', fac: 'Dr Rajesh Kumar', cr: 3 },
-      { id: 'sub-cs54t', name: 'Blockchain Technology', code: 'CS54T', type: 'Theory', dept: 'AI & DS', yr: 3, sem: 5, sec: 'A', fac: 'Mrs Vasantha Priya', cr: 3 },
-      { id: 'sub-cs57p', name: 'Data Analytics Laboratory', code: 'CS57P', type: 'Lab', dept: 'AI & DS', yr: 3, sem: 5, sec: 'A', fac: 'Dr Rajesh Kumar', cr: 2 }
+      { id: 'sub-cs51t', name: 'Programming Language for AI', code: 'CS51T', type: 'Theory', dept: 'AI & DS', yr: 3, sem: 5, sec: 'A', fac: 'Mrs Vasantha Priya', cr: 3, portal_id: 'AI3A' },
+      { id: 'sub-cs55t', name: 'Knowledge Engineering', code: 'CS55T', type: 'Theory', dept: 'AI & DS', yr: 3, sem: 5, sec: 'A', fac: 'Dr Rajesh Kumar', cr: 3, portal_id: 'AI3A' },
+      { id: 'sub-cs52t', name: 'Data Analytics', code: 'CS52T', type: 'Theory', dept: 'AI & DS', yr: 3, sem: 5, sec: 'A', fac: 'Mrs Vasantha Priya', cr: 3, portal_id: 'AI3A' },
+      { id: 'sub-cs53it', name: 'Web Technology', code: 'CS53IT', type: 'Theory', dept: 'AI & DS', yr: 3, sem: 5, sec: 'A', fac: 'Dr Rajesh Kumar', cr: 3, portal_id: 'AI3A' }
     ];
 
     for (const s of subjects) {
       await queryPg(
-        `INSERT INTO subjects (id, name, code, type, department, year, semester, section, faculty_name, credits, status, is_archived)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Active', 0)
+        `INSERT INTO subjects (id, name, code, type, department, year, semester, section, faculty_name, credits, status, is_archived, portal_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Active', 0, $11)
          ON CONFLICT (id) DO NOTHING`,
-        [s.id, s.name, s.code, s.type, s.dept, s.yr, s.sem, s.sec, s.fac, s.cr]
+        [s.id, s.name, s.code, s.type, s.dept, s.yr, s.sem, s.sec, s.fac, s.cr, s.portal_id]
       );
     }
 
-    // 7. Seed Timetables
+    // 7. Seed Timetables for AI3A
     const timetableSlots = [
-      { id: 'tt-aids-mon-p1', dept: 'AI & DS', yr: 3, sec: 'A', sem: 5, day: 'Monday', period: 1, name: 'Knowledge Engineering', fac: 'Dr Rajesh Kumar', start: '08:15 AM', end: '09:05 AM', room: 'F305' },
-      { id: 'tt-aids-mon-p2', dept: 'AI & DS', yr: 3, sec: 'A', sem: 5, day: 'Monday', period: 2, name: 'Programming Language for AI', fac: 'Mrs Vasantha Priya', start: '09:05 AM', end: '09:55 AM', room: 'F305' },
-      { id: 'tt-aids-mon-p3', dept: 'AI & DS', yr: 3, sec: 'A', sem: 5, day: 'Monday', period: 3, name: 'Data Analytics', fac: 'Mrs Vasantha Priya', start: '10:10 AM', end: '11:00 AM', room: 'F305' },
-      { id: 'tt-aids-tue-p1', dept: 'AI & DS', yr: 3, sec: 'A', sem: 5, day: 'Tuesday', period: 1, name: 'Data Analytics', fac: 'Mrs Vasantha Priya', start: '08:15 AM', end: '09:05 AM', room: 'F305' },
-      { id: 'tt-aids-wed-p1', dept: 'AI & DS', yr: 3, sec: 'A', sem: 5, day: 'Wednesday', period: 1, name: 'Web Technology', fac: 'Dr Rajesh Kumar', start: '08:15 AM', end: '09:05 AM', room: 'F305' }
+      { id: 'tt-aids-mon-p1', dept: 'AI & DS', yr: 3, sec: 'A', sem: 5, day: 'Monday', period: 1, name: 'Knowledge Engineering', fac: 'Dr Rajesh Kumar', start: '08:15 AM', end: '09:05 AM', room: 'F305', portal_id: 'AI3A' },
+      { id: 'tt-aids-mon-p2', dept: 'AI & DS', yr: 3, sec: 'A', sem: 5, day: 'Monday', period: 2, name: 'Programming Language for AI', fac: 'Mrs Vasantha Priya', start: '09:05 AM', end: '09:55 AM', room: 'F305', portal_id: 'AI3A' },
+      { id: 'tt-aids-mon-p3', dept: 'AI & DS', yr: 3, sec: 'A', sem: 5, day: 'Monday', period: 3, name: 'Data Analytics', fac: 'Mrs Vasantha Priya', start: '10:10 AM', end: '11:00 AM', room: 'F305', portal_id: 'AI3A' }
     ];
 
     for (const t of timetableSlots) {
       await queryPg(
-        `INSERT INTO timetables (id, department, year, section, semester, day, period_number, subject_name, faculty_name, start_time, end_time, room_number)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        `INSERT INTO timetables (id, department, year, section, semester, day, period_number, subject_name, faculty_name, start_time, end_time, room_number, portal_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          ON CONFLICT (id) DO NOTHING`,
-        [t.id, t.dept, t.yr, t.sec, t.sem, t.day, t.period, t.name, t.fac, t.start, t.end, t.room]
+        [t.id, t.dept, t.yr, t.sec, t.sem, t.day, t.period, t.name, t.fac, t.start, t.end, t.room, t.portal_id]
       );
     }
+
+    // 8. Fix unassigned portal_id for existing rows
+    await queryPg("UPDATE users SET portal_id = 'AI3A' WHERE role = 'student' AND (portal_id IS NULL OR portal_id = '')");
+    await queryPg("UPDATE subjects SET portal_id = 'AI3A' WHERE (portal_id IS NULL OR portal_id = '')");
+    await queryPg("UPDATE timetables SET portal_id = 'AI3A' WHERE (portal_id IS NULL OR portal_id = '')");
 
     console.log('✅ Supabase PostgreSQL cloud database successfully seeded with Default Users, Portals, Students, Departments, Faculty, Subjects & Timetables!');
   } catch (err) {

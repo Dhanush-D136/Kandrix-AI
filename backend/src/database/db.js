@@ -32,6 +32,14 @@ function runMigrations() {
 
     // Run direct PostgreSQL ALTER TABLE statements for Supabase compatibility
     const pgAlterStatements = [
+      "ALTER TABLE public.users ADD COLUMN IF NOT EXISTS portal_id TEXT;",
+      "ALTER TABLE public.faculty ADD COLUMN IF NOT EXISTS portal_id TEXT;",
+      "ALTER TABLE public.subjects ADD COLUMN IF NOT EXISTS portal_id TEXT;",
+      "ALTER TABLE public.timetables ADD COLUMN IF NOT EXISTS portal_id TEXT;",
+      "ALTER TABLE public.attendance_sessions ADD COLUMN IF NOT EXISTS portal_id TEXT;",
+      "ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS portal_id TEXT;",
+      "ALTER TABLE public.class_portals ADD COLUMN IF NOT EXISTS portal_id TEXT;",
+      "ALTER TABLE public.class_portals ADD COLUMN IF NOT EXISTS department_id TEXT;",
       "ALTER TABLE public.attendance_sessions ADD COLUMN IF NOT EXISTS subject_code TEXT;",
       "ALTER TABLE public.attendance_sessions ADD COLUMN IF NOT EXISTS faculty_id TEXT;",
       "ALTER TABLE public.attendance_sessions ADD COLUMN IF NOT EXISTS subject_id TEXT;",
@@ -50,6 +58,7 @@ function runMigrations() {
       if (userColumns) {
         const userColNames = userColumns.map((c) => c.name.toLowerCase());
         const userMigrations = [
+          { col: 'portal_id', type: 'TEXT' },
           { col: 'institution_name', type: "TEXT DEFAULT 'Elite Institute of Technology'" },
           { col: 'department_name', type: "TEXT DEFAULT 'Computer Science & Engineering'" },
           { col: 'device_fingerprint', type: 'TEXT' },
@@ -85,6 +94,7 @@ function runMigrations() {
           if (facColumns) {
             const facColNames = facColumns.map((c) => c.name.toLowerCase());
             const facMigrations = [
+              { col: 'portal_id', type: 'TEXT' },
               { col: 'status', type: "TEXT DEFAULT 'Active'" },
               { col: 'password_changed', type: 'INTEGER DEFAULT 0' },
               { col: 'must_change_password', type: 'INTEGER DEFAULT 0' },
