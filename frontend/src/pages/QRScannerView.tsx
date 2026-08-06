@@ -143,26 +143,33 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({ onSuccessReturn })
     };
   }, []);
 
-  // Bluetooth Proximity Verification State
-  const [bluetoothEnabled, setBluetoothEnabled] = useState<boolean>(true);
-  const [bluetoothRssi, setBluetoothRssi] = useState<number>(-65);
-  const [bluetoothBeaconName, setBluetoothBeaconName] = useState<string>('BEACON_CLASSROOM_F305');
-  const [bluetoothDistanceStr, setBluetoothDistanceStr] = useState<string>('~ 3.2 meters');
+  // GPS Geolocation State
+  const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<string>('Detecting GPS...');
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setGpsLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setGpsStatus(`✅ GPS Active (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`);
+        },
+        (err) => {
+          setGpsStatus('⚠️ GPS Warning: Location access denied or unavailable');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+  }, []);
 
   const handleQRScanned = async (rawText: string) => {
     if (isProcessingRef.current) return;
     isProcessingRef.current = true;
 
-    if (!bluetoothEnabled) {
-      isProcessingRef.current = false;
-      setScanErrorMessage('❌ Enable Bluetooth to continue.\nBluetooth proximity verification requires Bluetooth to be enabled on your device.');
-      return;
-    }
-
     setQrScanned(true);
     setRawQrPayload(rawText);
     setScanErrorMessage(null);
-    setInsertStatus('Verifying QR + Bluetooth Proximity...');
+    setInsertStatus('Verifying Dynamic 7s QR + GPS Geofence...');
 
     let sId = 'Unknown';
     let aCode = rawText;
@@ -195,9 +202,8 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({ onSuccessReturn })
         qr_payload: rawText,
         sessionId: sId,
         attendanceCode: aCode,
-        bluetooth_rssi: bluetoothRssi,
-        bluetooth_enabled: bluetoothEnabled,
-        bluetooth_beacon_id: bluetoothBeaconName
+        student_lat: gpsLocation?.lat || 0,
+        student_lng: gpsLocation?.lng || 0
       });
 
       const record = res.data.record;
@@ -214,7 +220,7 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({ onSuccessReturn })
         time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         date: now.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' }),
         attendanceCode: aCode,
-        bluetoothRssi: res.data.bluetoothRssi || bluetoothRssi,
+        distanceMeters: res.data.distanceMeters || record?.distance_meters || 0,
         status: 'PRESENT',
         attendanceId: res.data.attendanceId || record?.id
       });
@@ -240,58 +246,6 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({ onSuccessReturn })
     }
   };
 
-  const handleBluetoothCheckIn = async () => {
-    if (isProcessingRef.current) return;
-    isProcessingRef.current = true;
-
-    if (!bluetoothEnabled) {
-      isProcessingRef.current = false;
-      setScanErrorMessage('❌ Please enable Bluetooth to use Bluetooth Beacon Check-In.');
-      return;
-    }
-
-    setInsertStatus('Verifying Bluetooth Proximity Beacon...');
-    setScanErrorMessage(null);
-    setIsSubmitting(true);
-
-    try {
-      const res = await api.post('/attendance/mark', {
-        method: 'bluetooth',
-        verification_method: 'bluetooth',
-        bluetooth_rssi: bluetoothRssi,
-        bluetooth_enabled: true,
-        bluetooth_beacon_id: bluetoothBeaconName
-      });
-
-      const record = res.data.record;
-      setInsertStatus(`✅ RECORD SAVED IN SUPABASE VIA BLUETOOTH`);
-
-      const now = record?.attendance_time ? new Date(record.attendance_time) : new Date();
-
-      setSuccessData({
-        studentName: record?.student_name || user?.name || 'Student',
-        subject: record?.subject || 'Lecture Session',
-        period: record?.period_number ? `Period ${record.period_number}` : 'Period 1',
-        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        date: now.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' }),
-        attendanceCode: 'BLUETOOTH_BEACON',
-        bluetoothRssi: bluetoothRssi,
-        status: 'PRESENT',
-        attendanceId: res.data.attendanceId || record?.id
-      });
-
-      setTimeout(() => {
-        if (onSuccessReturn) onSuccessReturn();
-      }, 1200);
-    } catch (err: any) {
-      isProcessingRef.current = false;
-      const msg = err.response?.data?.message || err.message || 'Bluetooth Check-In failed.';
-      setScanErrorMessage(msg);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   // Mobile Success View Component
   if (successData) {
     return (
@@ -310,7 +264,7 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({ onSuccessReturn })
             ✅ Attendance Marked Successfully
           </h2>
           <p className="text-xs text-[#6B7280] font-medium pt-0.5">
-            Institutional verification complete.
+            GPS Geofence + Dynamic 7s QR Verified.
           </p>
         </div>
 
@@ -318,29 +272,16 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({ onSuccessReturn })
         <div className="bg-[#FAFAFA] rounded-2xl p-4 border border-[#E7E7E7] space-y-3 text-center">
           <div>
             <span className="text-[10px] font-extrabold text-[#6D5DFC] uppercase tracking-wider block">Student Name</span>
-            <p className="font-extrabold text-base sm:text-lg text-[#111827] truncate px-2">{successData.studentName}</p>
+            <p className="font-display font-extrabold text-lg text-[#111827]">{successData.studentName}</p>
           </div>
 
-          <div className="h-[1px] bg-[#E7E7E7] w-full my-1.5" />
-
-          <div className="grid grid-cols-2 gap-2 text-center">
-            <div>
-              <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider block">Subject</span>
-              <p className="font-bold text-xs sm:text-sm text-[#111827] truncate px-1">{successData.subject}</p>
-            </div>
-            <div>
-              <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider block">Period</span>
-              <p className="font-bold text-xs sm:text-sm text-[#111827]">{successData.period}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-center pt-1">
-            <div>
-              <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider block">Time</span>
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E7E7E7] text-xs">
+            <div className="text-left bg-white p-2.5 rounded-xl border border-[#E7E7E7]">
+              <span className="text-[10px] font-bold text-gray-500 uppercase block">Time</span>
               <p className="font-mono font-bold text-xs text-[#111827]">{successData.time}</p>
             </div>
-            <div>
-              <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider block">Date</span>
+            <div className="text-left bg-white p-2.5 rounded-xl border border-[#E7E7E7]">
+              <span className="text-[10px] font-bold text-gray-500 uppercase block">Date</span>
               <p className="font-mono font-bold text-xs text-[#111827]">{successData.date}</p>
             </div>
           </div>
@@ -481,41 +422,18 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({ onSuccessReturn })
           </div>
         </div>
 
-        {/* Location & Bluetooth Proximity Status Cards */}
+        {/* Location & GPS Status Cards */}
         <div className="grid grid-cols-2 gap-3 text-left">
-          {/* Bluetooth Proximity Status Card */}
+          {/* GPS Location Status Card */}
           <div className="p-3.5 rounded-2xl bg-[#FAFAFA] border border-[#E7E7E7] space-y-1.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-[#111827]">
-                <Zap className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
-                <span>Bluetooth Proximity</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setBluetoothEnabled(!bluetoothEnabled)}
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${bluetoothEnabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}
-              >
-                {bluetoothEnabled ? 'ON' : 'OFF'}
-              </button>
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#111827]">
+              <MapPin className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+              <span>GPS Geofence</span>
             </div>
-            {bluetoothEnabled ? (
-              <>
-                <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Beacon Detected
-                </p>
-                <p className="text-[10px] text-slate-500 font-mono">Range: {bluetoothDistanceStr} ({bluetoothRssi} dBm)</p>
-                <button
-                  type="button"
-                  onClick={handleBluetoothCheckIn}
-                  disabled={isSubmitting}
-                  className="w-full mt-2 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-                >
-                  <Zap className="w-3.5 h-3.5" /> Mark Present (Bluetooth)
-                </button>
-              </>
-            ) : (
-              <p className="text-[10px] text-rose-600 font-bold">Bluetooth Disabled</p>
-            )}
+            <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 truncate">
+              {gpsStatus}
+            </p>
+            <p className="text-[10px] text-slate-500 font-mono">Radius: 50m Max</p>
           </div>
 
           {/* Security Verification Card */}
@@ -525,8 +443,8 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({ onSuccessReturn })
                 <ShieldCheck className="w-3.5 h-3.5 text-[#6D5DFC]" />
                 <span>Verification Mode</span>
               </div>
-              <p className="text-[11px] text-[#6D5DFC] font-semibold mt-1">QR OR Bluetooth Beacon</p>
-              <p className="text-[10px] text-slate-500 font-mono">Use either method to check in</p>
+              <p className="text-[11px] text-[#6D5DFC] font-semibold mt-1">GPS + 7s Dynamic QR</p>
+              <p className="text-[10px] text-slate-500 font-mono">Real-Time Supabase Sync</p>
             </div>
           </div>
         </div>

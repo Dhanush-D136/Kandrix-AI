@@ -123,7 +123,7 @@ export const DynamicQRDisplay: React.FC<DynamicQRDisplayProps> = ({
         <div className="space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#ECFDF5] border border-[#12B76A]/30 text-[#12B76A] text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5 animate-spin text-[#12B76A]" />
-            7s Dynamic Real-Time Rotating QR + Bluetooth Proximity
+            7s Dynamic Rotating QR + GPS Geofence Verified
           </div>
           
           <div className="pt-1">

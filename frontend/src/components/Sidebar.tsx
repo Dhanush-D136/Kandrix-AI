@@ -34,19 +34,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
   const superAdminNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'class-portals', label: 'Class Portals', icon: GraduationCap },
+    { id: 'students-management', label: 'Global Students', icon: Users },
+    { id: 'faculty-management', label: 'Faculty & Staff', icon: UserCheck },
+    { id: 'subjects', label: 'Subjects', icon: BookOpen },
     { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
-    { id: 'backup', label: 'Database Backup', icon: Database },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
+    { id: 'backup', label: 'Database Backup', icon: Database },
   ];
 
   // 2. Class Portal Sidebar Items
   const classPortalNavItems = [
     { id: 'class-portal-dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'sessions', label: 'QR Attendance', icon: QrCode },
     { id: 'students-management', label: 'Students', icon: Users },
+    { id: 'faculty-management', label: 'Faculty', icon: UserCheck },
     { id: 'subjects', label: 'Subjects', icon: BookOpen },
     { id: 'timetable', label: 'Timetable', icon: Calendar },
-    { id: 'reports', label: 'Attendance Reports', icon: FileSpreadsheet },
+    { id: 'sessions', label: 'Attendance', icon: QrCode },
+    { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
 

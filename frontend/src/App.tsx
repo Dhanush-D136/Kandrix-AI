@@ -91,7 +91,11 @@ const MainLayout: React.FC = () => {
           {isAdmin ? (
             /* Portal 1: Super Admin Portal */
             <>
-              {(activeTab === 'dashboard' || activeTab === 'class-portals') && <ClassManagementPage />}
+              {activeTab === 'dashboard' && <ClassManagementPage />}
+              {activeTab === 'class-portals' && <ClassManagementPage />}
+              {activeTab === 'students-management' && <StudentManagement />}
+              {activeTab === 'faculty-management' && <FacultyManagement />}
+              {activeTab === 'subjects' && <SubjectsPage onNavigate={handleNavigate} />}
               {activeTab === 'reports' && <AttendanceReportsPage onNavigate={handleNavigate} />}
               {activeTab === 'backup' && <AttendanceManagementPage />}
               {(activeTab === 'profile' || activeTab === 'settings') && <ProfilePage />}
@@ -107,6 +111,10 @@ const MainLayout: React.FC = () => {
                   initialPeriod={sessionParams?.period}
                 />
               )}
+              {activeTab === 'students-management' && <StudentManagement />}
+              {activeTab === 'faculty-management' && <FacultyManagement />}
+              {activeTab === 'subjects' && <SubjectsPage onNavigate={handleNavigate} />}
+              {activeTab === 'timetable' && <TimetablePage onNavigate={handleNavigate} />}
               {activeTab === 'sessions' && (
                 <SessionHub
                   initialSubject={sessionParams?.subject}
@@ -115,9 +123,6 @@ const MainLayout: React.FC = () => {
                   initialPeriod={sessionParams?.period}
                 />
               )}
-              {activeTab === 'students-management' && <StudentManagement />}
-              {activeTab === 'subjects' && <SubjectsPage onNavigate={handleNavigate} />}
-              {activeTab === 'timetable' && <TimetablePage onNavigate={handleNavigate} />}
               {activeTab === 'reports' && <AttendanceReportsPage onNavigate={handleNavigate} />}
               {(activeTab === 'profile' || activeTab === 'settings') && <ProfilePage />}
             </>

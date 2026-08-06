@@ -227,8 +227,8 @@ export const StudentDashboard: React.FC = () => {
         {/* Status Badges */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="px-3.5 py-2 rounded-full bg-[#ECFDF5] border border-[#12B76A]/20 text-xs text-[#12B76A] flex items-center gap-1.5 font-bold shadow-sm">
-            <Zap className="w-4 h-4 text-[#12B76A] animate-pulse" />
-            <span>Bluetooth Proximity Active</span>
+            <MapPin className="w-4 h-4 text-[#12B76A] animate-pulse" />
+            <span>GPS Geofence Verified</span>
           </div>
           <div className={`px-3.5 py-2 rounded-full border text-xs font-bold shadow-sm ${defaulterColor}`}>
             <span>Status: {defaulterStatus}</span>

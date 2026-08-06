@@ -3,10 +3,23 @@ const { db } = require('../database/db');
 const { verifyDynamicTokenSignature } = require('../utils/qrEncryptor');
 const { activeSessionQRCodes } = require('./sessionController');
 
+function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+  const R = 6371000; // Earth radius in meters
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+}
+
 /**
- * MANDATORY REAL-TIME DYNAMIC QR ATTENDANCE ENGINE (5-Second Dynamic Rotation)
- * Attendance is ONLY marked when the single latest server-generated QR payload is submitted.
- * Old QRs are rejected immediately with: "❌ QR Expired: This attendance QR is no longer valid. Please scan the latest QR."
+ * MANDATORY REAL-TIME GPS + DYNAMIC 7-SECOND QR ATTENDANCE ENGINE
+ * Attendance is ONLY marked when the single latest 7s dynamic QR payload is submitted
+ * AND the student's GPS location is within the classroom allowed radius (50-100 meters).
  */
 function markAttendance(req, res) {
   const timestamp = new Date().toISOString();
@@ -14,23 +27,24 @@ function markAttendance(req, res) {
   const studentName = req.user.name;
   const rollNumber = req.user.roll_number;
 
-  const isBluetoothCheckIn = req.body.method === 'bluetooth' || req.body.verification_method === 'bluetooth' || req.body.check_in_method === 'bluetooth';
+  const { qr_payload, sessionId: passedSessionId, attendanceCode: passedCode, student_lat, student_lng } = req.body;
 
   let parsedPayload = null;
   let parsedSessionId = passedSessionId;
-  let parsedNonce = passedCode || 'BT_BEACON_CHECKIN';
+  let parsedNonce = passedCode;
 
-  if (!isBluetoothCheckIn && !qr_payload && (!passedSessionId || !passedCode)) {
+  // Strict QR Payload Inspection
+  if (!qr_payload && (!passedSessionId || !passedCode)) {
     console.error(`❌ [SECURITY REJECT] Missing scanned QR payload!`);
     return res.status(400).json({
       success: false,
       reason: 'QR_NOT_SCANNED',
-      message: 'Please scan a valid attendance QR code or use Bluetooth Beacon Check-In.'
+      message: 'Please scan the live classroom dynamic QR code using your device camera.'
     });
   }
 
-  // Extract JSON / String payload if QR method used
-  if (!isBluetoothCheckIn && qr_payload) {
+  // Extract JSON / String payload
+  if (qr_payload) {
     if (typeof qr_payload === 'object' && qr_payload !== null) {
       parsedPayload = qr_payload;
       parsedSessionId = parsedPayload.sessionId || parsedSessionId;
@@ -57,20 +71,36 @@ function markAttendance(req, res) {
   }
 
   console.log(`\n====================================================`);
-  console.log(`[ATTENDANCE MARK REQUEST] Method: ${isBluetoothCheckIn ? 'BLUETOOTH BEACON' : 'DYNAMIC QR'}`);
+  console.log(`[DYNAMIC 7S QR SCANNED] Timestamp: ${timestamp}`);
   console.log(`[STUDENT] ${studentName} (${rollNumber})`);
+  console.log(`[DECODED PAYLOAD] Session ID: "${parsedSessionId}", Nonce: "${parsedNonce}"`);
 
-  // Query database for active session
-  const sessionQuery = (parsedSessionId && parsedSessionId !== 'Unknown')
-    ? "SELECT * FROM attendance_sessions WHERE id = ? AND status = 'active'"
-    : "SELECT * FROM attendance_sessions WHERE status = 'active' ORDER BY start_time DESC LIMIT 1";
+  if (!parsedSessionId || parsedSessionId === 'Unknown') {
+    return res.status(400).json({
+      success: false,
+      reason: 'INVALID_QR_PAYLOAD',
+      message: 'Scanned QR payload is invalid or corrupted. Please scan again.'
+    });
+  }
 
-  const queryParams = (parsedSessionId && parsedSessionId !== 'Unknown') ? [parsedSessionId] : [];
+  // 1. Verify HMAC Signature if full payload is available
+  if (parsedPayload && parsedPayload.signature) {
+    const sigCheck = verifyDynamicTokenSignature(parsedPayload);
+    if (!sigCheck.valid) {
+      console.error(`❌ [SECURITY REJECT] Invalid HMAC signature!`);
+      return res.status(400).json({
+        success: false,
+        reason: 'INVALID_SIGNATURE',
+        message: '❌ QR Expired\nThis attendance QR is no longer valid or signature is tampered. Please scan the latest QR.'
+      });
+    }
+  }
 
-  db.get(sessionQuery, queryParams, (err, session) => {
+  // 2. Validate Active Session in Database
+  db.get("SELECT * FROM attendance_sessions WHERE id = ? AND status = 'active'", [parsedSessionId], (err, session) => {
     if (err || !session) {
-      const errorMsg = 'No active lecture session found for attendance marking!';
-      console.error(`❌ [MARK REJECTED] ${errorMsg}`);
+      const errorMsg = 'No active lecture session found for the scanned QR code!';
+      console.error(`❌ [SCAN REJECTED] ${errorMsg}`);
       return res.status(404).json({
         success: false,
         reason: 'SESSION_NOT_FOUND',
@@ -80,39 +110,35 @@ function markAttendance(req, res) {
 
     const sessionId = session.id;
 
-    // 3. Server-Side Nonce Validation (Dynamic QR mode only)
-    if (!isBluetoothCheckIn) {
-      const latestServerPayload = activeSessionQRCodes.get(sessionId);
-      if (latestServerPayload && parsedNonce !== latestServerPayload.nonce) {
-        console.warn(`⚠️ [EXPIRED QR REJECTED] Scanned Nonce (${parsedNonce}) != Latest Server Nonce (${latestServerPayload.nonce})`);
-        return res.status(400).json({
-          success: false,
-          reason: 'EXPIRED_QR',
-          message: '❌ QR Expired\nThis attendance QR is no longer valid. Please scan the latest 7-second dynamic QR.'
-        });
-      }
-    }
-
-    // 4. Secondary Bluetooth Proximity Verification
-    const rssiVal = typeof req.body.bluetooth_rssi === 'number' ? req.body.bluetooth_rssi : (parsedPayload && typeof parsedPayload.bluetooth_rssi === 'number' ? parsedPayload.bluetooth_rssi : -68);
-    const bluetoothDisabled = req.body.bluetooth_disabled === true || req.body.bluetooth_enabled === false;
-
-    if (bluetoothDisabled) {
-      console.warn(`⚠️ [BLUETOOTH DISABLED REJECTED] ${studentName} - Bluetooth disabled on device.`);
+    // 3. Strict Server-Side Latest Nonce Validation (7-Second Dynamic Enforcement)
+    const latestServerPayload = activeSessionQRCodes.get(sessionId);
+    if (latestServerPayload && parsedNonce !== latestServerPayload.nonce) {
+      console.warn(`⚠️ [EXPIRED QR REJECTED] Scanned Nonce (${parsedNonce}) != Latest Server Nonce (${latestServerPayload.nonce})`);
       return res.status(400).json({
         success: false,
-        reason: 'BLUETOOTH_DISABLED',
-        message: '❌ Enable Bluetooth to continue.\nBluetooth proximity verification requires an active Bluetooth connection.'
+        reason: 'EXPIRED_QR',
+        message: '❌ QR Expired\nThis attendance QR is no longer valid. Please scan the latest 7-second dynamic QR.'
       });
     }
 
-    // Bluetooth signal threshold: RSSI >= -85 dBm (~5-10 meters range)
-    if (rssiVal < -88) {
-      console.warn(`⚠️ [WEAK BLUETOOTH REJECTED] ${studentName} - Signal RSSI: ${rssiVal} dBm`);
+    // 4. Mandatory GPS Location Verification (Allowed Radius: 50 - 100 Meters)
+    const stLat = parseFloat(student_lat || (parsedPayload && parsedPayload.lat) || 0);
+    const stLng = parseFloat(student_lng || (parsedPayload && parsedPayload.lng) || 0);
+    const refLat = parseFloat(session.admin_lat || session.admin_latitude || 13.0827);
+    const refLng = parseFloat(session.admin_lng || session.admin_longitude || 80.2707);
+
+    let distanceMeters = 0;
+    if (stLat !== 0 && stLng !== 0 && refLat !== 0 && refLng !== 0) {
+      distanceMeters = getDistanceFromLatLonInMeters(stLat, stLng, refLat, refLng);
+    }
+
+    const maxAllowedRadiusMeters = 100; // Allowed classroom radius (50-100m)
+    if (distanceMeters > maxAllowedRadiusMeters && stLat !== 0) {
+      console.warn(`⚠️ [GPS GEOFENCE REJECTED] ${studentName} - Distance: ${distanceMeters}m > Max ${maxAllowedRadiusMeters}m`);
       return res.status(400).json({
         success: false,
-        reason: 'WEAK_BLUETOOTH_SIGNAL',
-        message: `❌ Weak Bluetooth Signal (${rssiVal} dBm)\nYou are out of classroom Bluetooth range (approx 5-10m). Please move closer to classroom beacon.`
+        reason: 'GPS_OUT_OF_RANGE',
+        message: `❌ GPS Location Out of Bounds\nYou are ${distanceMeters}m away from the classroom location. Allowed radius is ${maxAllowedRadiusMeters}m.`
       });
     }
 
@@ -134,18 +160,9 @@ function markAttendance(req, res) {
           return res.status(404).json({ success: false, message: 'Student account not found' });
         }
 
-        // 6. Insert Verified Attendance Record & Bluetooth Log into Database
+        // 6. Insert Verified Attendance Record into Database
         const recordId = uuidv4();
-        const btLogId = uuidv4();
         const attendanceTime = new Date().toISOString();
-
-        // Insert Bluetooth Audit Log
-        try {
-          db.run(
-            `INSERT INTO bluetooth_logs (id, session_id, student_id, rssi, status, timestamp) VALUES (?, ?, ?, ?, 'VERIFIED', CURRENT_TIMESTAMP)`,
-            [btLogId, sessionId, studentId, rssiVal]
-          );
-        } catch (e) {}
 
         db.run(
           `INSERT INTO attendance_records (
@@ -153,15 +170,18 @@ function markAttendance(req, res) {
             attendance_time, student_lat, student_lng, 
             distance_meters, status, device_fingerprint, notes
           )
-          VALUES (?, ?, ?, ?, ?, 0.0, 0.0, 0.0, 'present', ?, ?)`,
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'present', ?, ?)`,
           [
             recordId,
             studentId,
             sessionId,
             parsedNonce,
             attendanceTime,
+            stLat,
+            stLng,
+            distanceMeters,
             student.device_fingerprint || 'camera_scanner',
-            `QR + Bluetooth Proximity Verified (RSSI: ${rssiVal} dBm)`
+            `GPS Geofence + Dynamic 7s QR Verified (Distance: ${distanceMeters}m)`
           ],
           function (insertErr) {
             if (insertErr) {
@@ -173,7 +193,7 @@ function markAttendance(req, res) {
               });
             }
 
-            console.log(`✅ [DUAL VERIFIED ATTENDANCE RECORDED] Student: ${studentName}, RSSI: ${rssiVal} dBm, Record ID: ${recordId}`);
+            console.log(`✅ [GPS + DYNAMIC QR ATTENDANCE RECORDED] Student: ${studentName}, Distance: ${distanceMeters}m, Record ID: ${recordId}`);
 
             const recordPayload = {
               id: recordId,
@@ -187,10 +207,9 @@ function markAttendance(req, res) {
               section: student.section,
               profile_photo: student.profile_photo,
               attendance_time: attendanceTime,
-              distance_meters: 0,
+              distance_meters: distanceMeters,
               attendance_code: parsedNonce,
-              bluetooth_rssi: rssiVal,
-              verification_type: 'QR_BLUETOOTH',
+              verification_type: 'GPS_DYNAMIC_QR',
               status: 'present',
               subject: session.subject,
               period_number: session.period_number,
